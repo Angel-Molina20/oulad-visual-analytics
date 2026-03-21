@@ -2,3 +2,11 @@
 .env
 node_modules
 dist
+
+# Ignorar carpetas de datos completas
+data/artifacts/
+data/processed/
+
+# Opcional: Ignorar cualquier archivo CSV o Parquet en el proyecto
+*.csv
+*.parquet
