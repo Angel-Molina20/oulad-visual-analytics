@@ -1,0 +1,72 @@
+services:
+  db:
+    image: postgres:16
+    container_name: tfm_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tfm}
+      POSTGRES_USER: ${POSTGRES_USER:-tfm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tfm}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tfm} -d ${POSTGRES_DB:-tfm}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tfm_api
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-tfm}:${POSTGRES_PASSWORD:-tfm}@db:5432/${POSTGRES_DB:-tfm}
+      DATA_DIR: /data
+      PROCESSED_DIR: /data/processed
+      ARTIFACTS_DIR: /data/artifacts
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./data:/data
+      - ./backend/app:/app/app
+
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: tfm_worker
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-tfm}:${POSTGRES_PASSWORD:-tfm}@db:5432/${POSTGRES_DB:-tfm}
+      DATA_DIR: /data
+      RAW_DIR: /data/raw
+      PROCESSED_DIR: /data/processed
+      ARTIFACTS_DIR: /data/artifacts
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./data:/data
+    command: ["python", "-m", "jobs.00_smoke"]
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: tfm_web
+    environment:
+      VITE_API_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    volumes:
+      - ./frontend:/web
+      - /web/node_modules
+
+volumes:
+  db_data:
