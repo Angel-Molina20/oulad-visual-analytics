@@ -12,6 +12,7 @@ COPY requirements.txt /worker/requirements.txt
 RUN pip install --no-cache-dir -U pip \
  && pip install --no-cache-dir -r /worker/requirements.txt
 
+COPY run_pipeline.py /worker/run_pipeline.py
 COPY jobs /worker/jobs
 COPY common /worker/common
 
