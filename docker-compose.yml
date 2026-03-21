@@ -41,6 +41,7 @@ services:
       dockerfile: Dockerfile
     container_name: tfm_worker
     environment:
+      PYTHONPATH: /worker
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-tfm}:${POSTGRES_PASSWORD:-tfm}@db:5432/${POSTGRES_DB:-tfm}
       DATA_DIR: /data
       RAW_DIR: /data/raw
@@ -51,6 +52,7 @@ services:
         condition: service_healthy
     volumes:
       - ./data:/data
+      - ./worker:/worker
     command: ["python", "-m", "jobs.00_smoke"]
 
   web:
