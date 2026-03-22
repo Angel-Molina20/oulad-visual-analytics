@@ -7,6 +7,7 @@ dist
 # Ignorar carpetas de datos completas
 data/artifacts/
 data/processed/
+data/raw/
 
 # Opcional: Ignorar cualquier archivo CSV o Parquet en el proyecto
 *.csv
