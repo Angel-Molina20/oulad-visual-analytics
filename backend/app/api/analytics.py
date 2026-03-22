@@ -83,3 +83,42 @@ def alerts(course_id: str, week_id: int = Query(...), top: int = Query(20, ge=1,
     ].to_dict(orient="records")
 
     return {"course_id": course_id, "week_id": week_id, "alerts": alerts_out}
+
+@router.get("/courses/{course_id}/cluster-outcomes")
+def cluster_outcomes(course_id: str):
+    """
+    Devuelve la relación cluster vs resultado final en conteos y tasa.
+
+    Importante:
+    - Se calcula a nivel estudiante-curso (una fila por estudiante),
+      para evitar duplicaciones por semana.
+    """
+    df = load_mart()
+    d = df[df["course_id"] == course_id].copy()
+
+    if d.empty:
+        return {"course_id": course_id, "clusters": [], "note": "course_id no encontrado"}
+
+    # Una fila por estudiante (tomamos la última semana disponible)
+    base = (
+        d.sort_values("week_id")
+        .groupby(["course_id", "user_id"], as_index=False)
+        .last()[["course_id", "user_id", "cluster", "final_result"]]
+    )
+
+    counts = (
+        base.groupby(["cluster", "final_result"])["user_id"]
+        .nunique()
+        .reset_index(name="students")
+    )
+
+    totals = (
+        base.groupby("cluster")["user_id"]
+        .nunique()
+        .reset_index(name="total_students")
+    )
+
+    merged = counts.merge(totals, on="cluster", how="left")
+    merged["rate"] = (merged["students"] / merged["total_students"]).round(4)
+
+    return {"course_id": course_id, "clusters": merged.to_dict(orient="records")}

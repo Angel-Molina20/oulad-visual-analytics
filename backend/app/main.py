@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .api.health import router as health_router
 from .api.courses import router as courses_router
 from .api.analytics import router as analytics_router
+from .api.meta import router as meta_router
 
 app = FastAPI(title="OULAD Visual Analytics API", version="0.1.0")
 
@@ -22,3 +23,4 @@ app.add_middleware(
 app.include_router(health_router, tags=["health"])
 app.include_router(courses_router, tags=["courses"])
 app.include_router(analytics_router, tags=["analytics"])
+app.include_router(meta_router, tags=["meta"])
