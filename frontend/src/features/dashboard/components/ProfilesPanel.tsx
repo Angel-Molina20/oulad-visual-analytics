@@ -1,170 +1,273 @@
-import { useMemo, useState } from "react"
 import Plot from "react-plotly.js"
 import {
-    Box,
+    Card,
+    CardContent,
+    Typography,
+    Grid,
     Table,
-    TableBody,
-    TableCell,
-    TableContainer,
     TableHead,
-    TablePagination,
     TableRow,
+    TableCell,
+    TableBody,
+    Divider,
+    Chip,
+    Stack,
 } from "@mui/material"
-import SectionCard from "../components/ui/SectionCard"
 import type { ProfilesResponse } from "../../../types/api"
+import { getClusterMeta } from "../utils/clusterMeta"
 
-export default function ProfilesPanel({ data }: { data: ProfilesResponse | null }) {
-    const [page, setPage] = useState(0)
-    const [rowsPerPage, setRowsPerPage] = useState(5)
+type ClusterOutcomeRow = {
+    cluster: number
+    final_result: string
+    students: number
+    total_students: number
+    rate: number // 0..1
+}
 
-    const safeProfiles = data?.profiles ?? []
-    const safeOutcomes = data?.outcomes ?? []
+type Props = {
+    data: ProfilesResponse | null
+    clusterOutcomes?: ClusterOutcomeRow[] | null
+}
 
-    const clusterX = safeProfiles.map((r) => `C${r.cluster}`)
-    const clusterY = safeProfiles.map((r) => r.students)
+const ORDER = ["Pass", "Distinction", "Fail", "Withdrawn"] as const
 
-    const outcomeTotalsMap = safeOutcomes.reduce<Record<string, number>>((acc, item) => {
-        const key = item.final_result || "Unknown"
-        acc[key] = (acc[key] || 0) + item.students
-        return acc
-    }, {})
+function pct(n: number) {
+    return `${(n * 100).toFixed(1)}%`
+}
 
-    const outcomeLabels = Object.keys(outcomeTotalsMap)
-    const outcomeValues = Object.values(outcomeTotalsMap)
+function chipColor(tone: "default" | "success" | "warning") {
+    if (tone === "success") return "success"
+    if (tone === "warning") return "warning"
+    return "default"
+}
 
-    const paginatedOutcomes = useMemo(() => {
-        const start = page * rowsPerPage
-        return safeOutcomes.slice(start, start + rowsPerPage)
-    }, [safeOutcomes, page, rowsPerPage])
-
+export default function ProfilesPanel({ data, clusterOutcomes }: Props) {
     if (!data) return null
 
-    return (
-        <Box
-            sx={{
-                display: "grid",
-                gap: 2,
-                width: "100%",
-                gridTemplateColumns: {
-                    xs: "1fr",
-                    xl: "1.25fr 1fr 1.1fr",
-                },
-                alignItems: "stretch",
-            }}
-        >
-            <Box sx={{ minWidth: 0, display: "flex" }}>
-                <SectionCard
-                    title="Distribución de clusters"
-                    subtitle="Cantidad de estudiantes agrupados por perfil."
-                >
-                    <Plot
-                        data={[
-                            {
-                                type: "bar",
-                                x: clusterX,
-                                y: clusterY,
-                            },
-                        ]}
-                        layout={{
-                            height: 320,
-                            margin: { l: 50, r: 20, t: 10, b: 45 },
-                            paper_bgcolor: "white",
-                            plot_bgcolor: "white",
-                        }}
-                        style={{ width: "100%" }}
-                        config={{ responsive: true, displayModeBar: false }}
-                    />
-                </SectionCard>
-            </Box>
+    // ====== Distribución de clusters ======
+    const clusterIds = data.profiles.map((r) => r.cluster)
+    const xCodes = clusterIds.map((c) => getClusterMeta(c).code)
+    const yStudents = data.profiles.map((r) => r.students)
 
-            <Box sx={{ minWidth: 0, display: "flex" }}>
-                <SectionCard
-                    title="Cruce cluster y resultado final"
-                    subtitle="Vista tabular del comportamiento de cierre."
-                >
-                    <TableContainer
-                        sx={{
-                            border: "1px solid rgba(15, 23, 42, 0.06)",
-                            borderRadius: 2,
-                        }}
-                    >
+    // ====== Matriz de outcomes por cluster (rate) ======
+    const byCluster: Record<number, Record<string, number>> = {}
+    const totals: Record<number, number> = {}
+
+    ;(clusterOutcomes || []).forEach((r) => {
+        byCluster[r.cluster] = byCluster[r.cluster] || {}
+        byCluster[r.cluster][r.final_result] = r.rate
+        totals[r.cluster] = r.total_students
+    })
+
+    // ====== Tabla resumen outcomes ======
+    const rows = clusterIds.map((c) => {
+        const meta = getClusterMeta(c)
+        return {
+            cluster: c,
+            code: meta.code,
+            label: meta.label,
+            tone: meta.tone,
+            total: totals[c] ?? 0,
+            pass: byCluster[c]?.Pass ?? 0,
+            dist: byCluster[c]?.Distinction ?? 0,
+            fail: byCluster[c]?.Fail ?? 0,
+            withd: byCluster[c]?.Withdrawn ?? 0,
+        }
+    })
+
+    // ====== Treemap data (Curso -> Cluster -> Resultado) ======
+    const treemapIds: string[] = []
+    const treemapLabels: string[] = []
+    const treemapParents: string[] = []
+    const treemapValues: number[] = []
+    const treemapText: string[] = []
+
+    // Root
+    treemapIds.push("root")
+    treemapLabels.push("Curso")
+    treemapParents.push("")
+    treemapValues.push(clusterIds.length * 100)
+    treemapText.push("")
+
+    function normalizeTo100(values: number[]) {
+        const sum = values.reduce((a, b) => a + b, 0)
+        if (sum <= 0) return values
+        const scaled = values.map((v) => (v * 100) / sum)
+        // Ajuste final para que sume exacto 100
+        const fixed = scaled.map((v) => Number(v.toFixed(2)))
+        const diff = 100 - fixed.reduce((a, b) => a + b, 0)
+        fixed[0] = Number((fixed[0] + diff).toFixed(2))
+        return fixed
+    }
+// Cluster nodes
+    clusterIds.forEach((c) => {
+        const meta = getClusterMeta(c)
+        const cid = `cluster-${meta.code}`
+
+        treemapIds.push(cid)
+        treemapLabels.push(meta.code)
+        treemapParents.push("root")
+        treemapValues.push(100)
+        treemapText.push(meta.label)
+    })
+
+    // Outcome nodes (values = %)
+    clusterIds.forEach((c) => {
+        const meta = getClusterMeta(c)
+        const parentId = `cluster-${meta.code}`
+
+        const raw = ORDER.map((k) => (byCluster[c]?.[k] ?? 0) * 100)
+        const vals = normalizeTo100(raw)
+
+        ORDER.forEach((k, i) => {
+            treemapIds.push(`${parentId}-${k}`)
+            treemapLabels.push(k)
+            treemapParents.push(parentId)
+            treemapValues.push(vals[i])
+            treemapText.push(`${meta.label}<br>${k}: ${vals[i].toFixed(1)}%`)
+        })
+    })
+
+    return (
+        <Grid container spacing={2}>
+            {/* Izquierda: distribución */}
+            <Grid item xs={12} md={4}>
+                <Card variant="outlined">
+                    <CardContent>
+                        <Typography variant="h6" fontWeight={700} gutterBottom>
+                            Distribución de clusters
+                        </Typography>
+
+                        <Plot
+                            data={[
+                                {
+                                    type: "bar",
+                                    x: xCodes,
+                                    y: yStudents,
+                                    hovertemplate: "%{x}<br>Estudiantes: %{y}<extra></extra>",
+                                },
+                            ]}
+                            layout={{
+                                height: 260,
+                                margin: { l: 40, r: 10, t: 10, b: 40 },
+                                yaxis: { title: "Estudiantes" },
+                            }}
+                            style={{ width: "100%" }}
+                        />
+
                         <Table size="small">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell sx={{ backgroundColor: "#f8fafc", fontWeight: 700 }}>
-                                        Cluster
-                                    </TableCell>
-                                    <TableCell sx={{ backgroundColor: "#f8fafc", fontWeight: 700 }}>
-                                        Resultado
-                                    </TableCell>
-                                    <TableCell
-                                        align="right"
-                                        sx={{ backgroundColor: "#f8fafc", fontWeight: 700 }}
-                                    >
-                                        Estudiantes
-                                    </TableCell>
+                                    <TableCell>Cluster</TableCell>
+                                    <TableCell>Perfil</TableCell>
+                                    <TableCell align="right">Estudiantes</TableCell>
                                 </TableRow>
                             </TableHead>
-
                             <TableBody>
-                                {paginatedOutcomes.map((r, idx) => (
-                                    <TableRow key={`${r.cluster}-${r.final_result}-${idx}`} hover>
-                                        <TableCell>C{r.cluster}</TableCell>
-                                        <TableCell>{r.final_result}</TableCell>
-                                        <TableCell align="right">{r.students}</TableCell>
+                                {data.profiles.map((r) => {
+                                    const meta = getClusterMeta(r.cluster)
+                                    return (
+                                        <TableRow key={r.cluster}>
+                                            <TableCell>{meta.code}</TableCell>
+                                            <TableCell>
+                                                <Chip
+                                                    size="small"
+                                                    label={meta.label}
+                                                    color={chipColor(meta.tone)}
+                                                    variant="outlined"
+                                                />
+                                            </TableCell>
+                                            <TableCell align="right">{r.students}</TableCell>
+                                        </TableRow>
+                                    )
+                                })}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </Grid>
+
+            {/* Derecha: outcomes */}
+            <Grid item xs={12} md={8}>
+                <Card variant="outlined">
+                    <CardContent>
+                        <Stack spacing={0.5} sx={{ mb: 1 }}>
+                            <Typography variant="h6" fontWeight={700}>
+                                Resultados por cluster
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Treemap por cluster y resultado. El tamaño representa porcentaje.
+                            </Typography>
+                        </Stack>
+
+                        <Plot
+                            data={[
+                                {
+                                    type: "treemap",
+                                    ids: treemapIds,
+                                    labels: treemapLabels,
+                                    parents: treemapParents,
+                                    values: treemapValues,
+                                    text: treemapText,
+                                    textinfo: "label+value",
+                                    valuesuffix: "%",
+                                    hovertemplate: "%{text}<extra></extra>",
+                                    branchvalues: "total",
+                                } as any,
+                            ]}
+                            layout={{
+                                height: 340,
+                                margin: { l: 10, r: 10, t: 10, b: 10 },
+                            }}
+                            style={{ width: "100%" }}
+                        />
+
+                        <Divider sx={{ my: 1.5 }} />
+
+                        <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+                            Tabla resumen
+                        </Typography>
+
+                        <Table size="small">
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>Cluster</TableCell>
+                                    <TableCell>Perfil</TableCell>
+                                    <TableCell align="right">Total</TableCell>
+                                    <TableCell align="right">Pass</TableCell>
+                                    <TableCell align="right">Dist.</TableCell>
+                                    <TableCell align="right">Fail</TableCell>
+                                    <TableCell align="right">Withd.</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {rows.map((r) => (
+                                    <TableRow key={r.cluster}>
+                                        <TableCell>{r.code}</TableCell>
+                                        <TableCell>
+                                            <Chip
+                                                size="small"
+                                                label={r.label}
+                                                color={chipColor(r.tone)}
+                                                variant="outlined"
+                                            />
+                                        </TableCell>
+                                        <TableCell align="right">{r.total || "-"}</TableCell>
+                                        <TableCell align="right">{pct(r.pass)}</TableCell>
+                                        <TableCell align="right">{pct(r.dist)}</TableCell>
+                                        <TableCell align="right">{pct(r.fail)}</TableCell>
+                                        <TableCell align="right">{pct(r.withd)}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
                         </Table>
-                    </TableContainer>
 
-                    <TablePagination
-                        component="div"
-                        count={safeOutcomes.length}
-                        page={page}
-                        onPageChange={(_, newPage) => setPage(newPage)}
-                        rowsPerPage={rowsPerPage}
-                        onRowsPerPageChange={(e) => {
-                            setRowsPerPage(Number(e.target.value))
-                            setPage(0)
-                        }}
-                        rowsPerPageOptions={[5, 10]}
-                        labelRowsPerPage="Filas"
-                        sx={{
-                            ".MuiTablePagination-toolbar": {
-                                minHeight: 44,
-                                px: 1,
-                            },
-                        }}
-                    />
-                </SectionCard>
-            </Box>
-
-            <Box sx={{ minWidth: 0, display: "flex" }}>
-                <SectionCard
-                    title="Resultado final global"
-                    subtitle="Distribución total por resultado académico."
-                >
-                    <Plot
-                        data={[
-                            {
-                                type: "bar",
-                                orientation: "h",
-                                x: outcomeValues,
-                                y: outcomeLabels,
-                            },
-                        ]}
-                        layout={{
-                            height: 320,
-                            margin: { l: 110, r: 20, t: 10, b: 35 },
-                            paper_bgcolor: "white",
-                            plot_bgcolor: "white",
-                        }}
-                        style={{ width: "100%" }}
-                        config={{ responsive: true, displayModeBar: false }}
-                    />
-                </SectionCard>
-            </Box>
-        </Box>
+                        <Typography variant="caption" color="text.secondary">
+                            Porcentajes calculados por estudiante-curso, no por semana.
+                        </Typography>
+                    </CardContent>
+                </Card>
+            </Grid>
+        </Grid>
     )
 }
