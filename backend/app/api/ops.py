@@ -23,7 +23,7 @@ class AlertFeedbackIn(BaseModel):
     week_id: int
     user_id: int
     risk_score: float | None = None
-    status: Literal["open", "in_review", "resolved"] = "open"
+    status: Literal["open", "resolved"] = "open"
     note: str | None = None
 
 

@@ -5,7 +5,7 @@ import type { AlertFeedback } from "../../../types/api"
 type NotesFilters = {
     courseId?: string
     userId?: number
-    status?: "open" | "in_review" | "resolved"
+    status?: "open" | "resolved"
 }
 
 export function useStudentNotes(filters: NotesFilters) {
@@ -32,4 +32,3 @@ export function useStudentNotes(filters: NotesFilters) {
 
     return { data, loading, error }
 }
-

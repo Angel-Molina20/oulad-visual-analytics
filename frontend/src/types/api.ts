@@ -56,7 +56,7 @@ export type AlertFeedback = {
     week_id: number
     user_id: number
     risk_score: number | null
-    status: "open" | "in_review" | "resolved"
+    status: "open" | "resolved"
     note: string | null
     created_at: string
     updated_at?: string | null

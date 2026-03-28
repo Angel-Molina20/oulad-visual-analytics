@@ -26,14 +26,14 @@ import { useCourses } from "../hooks/useCourses"
 import { useStudentNotes } from "../hooks/useStudentNotes"
 import { useNavigate, useLocation } from "react-router-dom"
 
-type StatusFilterValue = "all" | "open" | "in_review" | "resolved"
+type StatusFilterValue = "all" | "open" | "resolved"
 
 type NoteRow = {
     id: number
     course_id: string
     week_id: number
     user_id: number
-    status: "open" | "in_review" | "resolved"
+    status: "open" | "resolved"
     note: string | null
     created_at: string
     updated_at?: string | null
@@ -72,13 +72,11 @@ export default function StudentNotesPage() {
 
     const statusLabel = (status: StatusFilterValue) => {
         if (status === "resolved") return "Revisado"
-        if (status === "in_review") return "En revisión"
         return "Pendiente"
     }
 
     const statusColor = (status: StatusFilterValue) => {
         if (status === "resolved") return "success"
-        if (status === "in_review") return "info"
         return "warning"
     }
 
@@ -190,7 +188,6 @@ export default function StudentNotesPage() {
                                 >
                                     <MenuItem value="all">Todos</MenuItem>
                                     <MenuItem value="open">Pendientes</MenuItem>
-                                    <MenuItem value="in_review">En revisión</MenuItem>
                                     <MenuItem value="resolved">Revisados</MenuItem>
                                 </TextField>
                             </Grid>

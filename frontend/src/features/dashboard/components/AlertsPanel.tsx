@@ -42,7 +42,7 @@ import { apiGet, apiPost } from "../../../api/client"
 
 type RiskFilterValue = "all" | "high" | "medium" | "low"
 type ClusterFilterValue = "all" | "0" | "1" | "2"
-type StatusFilterValue = "all" | "open" | "in_review" | "resolved"
+type StatusFilterValue = "all" | "open" | "resolved"
 
 type Props = {
     data: AlertsResponse | null
@@ -181,8 +181,7 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
         })
         const statusRank: Record<string, number> = {
             open: 0,
-            in_review: 1,
-            resolved: 2,
+            resolved: 1,
         }
 
         rows.sort((a, b) => {
@@ -267,13 +266,11 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
 
     const statusLabel = (status: StatusFilterValue) => {
         if (status === "resolved") return "Revisado"
-        if (status === "in_review") return "En revisión"
         return "Pendiente"
     }
 
     const statusColor = (status: StatusFilterValue) => {
         if (status === "resolved") return "success"
-        if (status === "in_review") return "info"
         return "warning"
     }
 
@@ -471,7 +468,6 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                         >
                             <MenuItem value="all">Todos</MenuItem>
                             <MenuItem value="open">Abiertas</MenuItem>
-                            <MenuItem value="in_review">En revisión</MenuItem>
                             <MenuItem value="resolved">Resueltas</MenuItem>
                         </TextField>
                     </Grid>
@@ -589,16 +585,10 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                                                         </IconButton>
                                                     </Tooltip>
                                                 ) : (
-                                                    <Tooltip
-                                                        title={
-                                                            status === "in_review"
-                                                                ? "En revisión"
-                                                                : "Marcar revisado"
-                                                        }
-                                                    >
+                                                    <Tooltip title="Marcar revisado">
                                                         <IconButton
                                                             size="small"
-                                                            color={status === "in_review" ? "info" : "warning"}
+                                                            color="warning"
                                                             aria-label="Marcar revisado"
                                                             onClick={() => openReviewDialog(a)}
                                                         >
