@@ -12,6 +12,7 @@ export function useStudentNotes(filters: NotesFilters) {
     const [data, setData] = useState<AlertFeedback[]>([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
+    const [reloadKey, setReloadKey] = useState(0)
 
     const query = useMemo(() => {
         const params = new URLSearchParams({ note_only: "true" })
@@ -28,7 +29,9 @@ export function useStudentNotes(filters: NotesFilters) {
             .then(setData)
             .catch((e) => setError(e.message))
             .finally(() => setLoading(false))
-    }, [query])
+    }, [query, reloadKey])
 
-    return { data, loading, error }
+    const reload = () => setReloadKey((prev) => prev + 1)
+
+    return { data, loading, error, reload }
 }

@@ -21,9 +21,12 @@ import {
     Typography,
 } from "@mui/material"
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded"
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded"
 import AppShell from "../components/layout/AppShell"
 import { useCourses } from "../hooks/useCourses"
 import { useStudentNotes } from "../hooks/useStudentNotes"
+import { apiPost } from "../../../api/client"
+import type { AlertFeedback } from "../../../types/api"
 import { useNavigate, useLocation } from "react-router-dom"
 
 type StatusFilterValue = "all" | "open" | "resolved"
@@ -33,6 +36,7 @@ type NoteRow = {
     course_id: string
     week_id: number
     user_id: number
+    risk_score: number | null
     status: "open" | "resolved"
     note: string | null
     created_at: string
@@ -107,6 +111,23 @@ export default function StudentNotesPage() {
         "& .MuiInputLabel-root": {
             fontSize: 15,
         },
+    }
+
+    const markReviewed = async (row: NoteRow) => {
+        if (row.status !== "open") return
+        try {
+            await apiPost<AlertFeedback>("/ops/alerts/feedback", {
+                course_id: row.course_id,
+                week_id: row.week_id,
+                user_id: row.user_id,
+                risk_score: row.risk_score,
+                status: "resolved",
+                note: row.note,
+            })
+            notes.reload()
+        } catch (err) {
+            // Ignore for now; UI remains unchanged
+        }
     }
 
     return (
@@ -234,20 +255,34 @@ export default function StudentNotesPage() {
                                             {new Date(row.updated_at || row.created_at).toLocaleString()}
                                         </TableCell>
                                         <TableCell align="center">
-                                            <Tooltip title="Ver trayectoria">
-                                                <IconButton
-                                                    size="small"
-                                                    color="primary"
-                                                    aria-label="Ver trayectoria"
-                                                    onClick={() =>
-                                                        navigate(
-                                                            `/trajectory/${row.course_id}/${row.user_id}?week=${row.week_id}&from=${encodeURIComponent(location.pathname)}`
-                                                        )
-                                                    }
-                                                >
-                                                    <VisibilityRoundedIcon />
-                                                </IconButton>
-                                            </Tooltip>
+                                            <Stack direction="row" spacing={0.5} justifyContent="center">
+                                                {row.status !== "resolved" && (
+                                                    <Tooltip title="Marcar revisado">
+                                                        <IconButton
+                                                            size="small"
+                                                            color="warning"
+                                                            aria-label="Marcar revisado"
+                                                            onClick={() => markReviewed(row)}
+                                                        >
+                                                            <CheckCircleRoundedIcon />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                )}
+                                                <Tooltip title="Ver trayectoria">
+                                                    <IconButton
+                                                        size="small"
+                                                        color="primary"
+                                                        aria-label="Ver trayectoria"
+                                                        onClick={() =>
+                                                            navigate(
+                                                                `/trajectory/${row.course_id}/${row.user_id}?week=${row.week_id}&from=${encodeURIComponent(location.pathname)}`
+                                                            )
+                                                        }
+                                                    >
+                                                        <VisibilityRoundedIcon />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </Stack>
                                         </TableCell>
                                     </TableRow>
                                 ))}
