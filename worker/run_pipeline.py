@@ -2,13 +2,14 @@ import subprocess
 import sys
 
 JOBS = [
-    "00_smoke"
+    "jobs.00_smoke",
     "jobs.01_ingest_oulad",
     "jobs.02_build_events",
     "jobs.03_weekly_features",
     "jobs.04_cluster_profiles",
     "jobs.05_build_mart",
-    "jobs.06_cluster_labels",
+    "jobs.06_clean_mart",
+    "jobs.07_cluster_labels",
 ]
 
 def run(job: str):

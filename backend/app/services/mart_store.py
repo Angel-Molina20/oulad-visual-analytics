@@ -6,7 +6,7 @@ import pandas as pd
 
 def _mart_path() -> Path:
     processed_dir = Path(os.getenv("PROCESSED_DIR", "/data/processed"))
-    return processed_dir / "mart.parquet"
+    return processed_dir / "mart_clean.parquet"
 
 
 @lru_cache(maxsize=1)
