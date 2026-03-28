@@ -14,6 +14,8 @@ tags:
     description: Metadatos globales de clustering.
   - name: analytics
     description: Endpoints de analítica por curso y estudiante.
+  - name: ops
+    description: Operaciones docentes y configuración.
 paths:
   /health:
     get:
@@ -240,6 +242,117 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ClusterOutcomesResponse"
+  /ops/alerts/feedback:
+    get:
+      tags: [ops]
+      summary: Listar feedback de alertas
+      description: Devuelve el seguimiento docente por curso/semana/estado. Usa note_only para ver solo registros con comentario.
+      parameters:
+        - name: course_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: week_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [open, resolved]
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: note_only
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AlertFeedback"
+    post:
+      tags: [ops]
+      summary: Crear o actualizar feedback de alerta
+      description: Inserta o actualiza el estado y nota de un estudiante en una semana.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlertFeedbackInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertFeedback"
+
+  /ops/risk-config/active:
+    get:
+      tags: [ops]
+      summary: Configuración de riesgo activa
+      description: Devuelve la configuración activa usada para calcular el score de riesgo.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/RiskConfig"
+                  - type: "null"
+
+  /ops/risk-config:
+    post:
+      tags: [ops]
+      summary: Crear configuración de riesgo
+      description: Crea una nueva configuración y la marca como activa.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RiskConfigInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskConfig"
+
+  /ops/audit-events:
+    post:
+      tags: [ops]
+      summary: Registrar evento de auditoría
+      description: Registra eventos de uso del dashboard.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuditEventInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEvent"
 components:
   schemas:
     HealthResponse:
@@ -258,6 +371,84 @@ components:
         count:
           type: integer
       required: [courses, count]
+    AlertFeedbackInput:
+      type: object
+      properties:
+        course_id:
+          type: string
+        week_id:
+          type: integer
+        user_id:
+          type: integer
+        risk_score:
+          type: number
+        status:
+          type: string
+          enum: [open, resolved]
+        note:
+          type: string
+      required: [course_id, week_id, user_id, status]
+    AlertFeedback:
+      allOf:
+        - $ref: "#/components/schemas/AlertFeedbackInput"
+        - type: object
+          properties:
+            id:
+              type: integer
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+    RiskConfigInput:
+      type: object
+      properties:
+        name:
+          type: string
+        w_drop_clicks:
+          type: number
+        w_low_clicks:
+          type: number
+        w_low_events:
+          type: number
+        w_low_resources:
+          type: number
+        drop_threshold:
+          type: number
+      required: [name, w_drop_clicks, w_low_clicks, w_low_events, w_low_resources, drop_threshold]
+    RiskConfig:
+      allOf:
+        - $ref: "#/components/schemas/RiskConfigInput"
+        - type: object
+          properties:
+            id:
+              type: integer
+            active:
+              type: boolean
+            created_at:
+              type: string
+              format: date-time
+    AuditEventInput:
+      type: object
+      properties:
+        user_id:
+          type: integer
+        action:
+          type: string
+        payload:
+          type: object
+      required: [action]
+    AuditEvent:
+      allOf:
+        - $ref: "#/components/schemas/AuditEventInput"
+        - type: object
+          properties:
+            id:
+              type: integer
+            created_at:
+              type: string
+              format: date-time
     ProfilesResponse:
       type: object
       properties:

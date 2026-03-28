@@ -70,5 +70,20 @@ services:
       - ./frontend:/web
       - /web/node_modules
 
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: tfm_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+    ports:
+      - "5050:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
 volumes:
   db_data:
+  pgadmin_data:
