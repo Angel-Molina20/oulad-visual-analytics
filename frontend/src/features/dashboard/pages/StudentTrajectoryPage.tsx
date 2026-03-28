@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { Link as RouterLink, useParams } from "react-router-dom"
+import { Link as RouterLink, useParams , useLocation } from "react-router-dom"
 import {
     Alert,
     Box,
@@ -26,6 +26,13 @@ export default function StudentTrajectoryPage() {
     const canLoad = Boolean(courseId) && isValidUserId
 
     const traj = useTrajectory(courseId, canLoad ? numericUserId : 0)
+
+    const location = useLocation()
+    const selectedWeek = useMemo(() => {
+        const sp = new URLSearchParams(location.search)
+        const w = Number(sp.get("week"))
+        return Number.isFinite(w) ? w : null
+    }, [location.search])
 
     return (
         <AppShell>
@@ -108,7 +115,7 @@ export default function StudentTrajectoryPage() {
                     )}
 
                     {canLoad && !traj.loading && !traj.error && (
-                        <TrajectoryPanel data={traj.data} />
+                        <TrajectoryPanel data={traj.data} courseId={courseId} selectedWeek={selectedWeek} />
                     )}
                 </Stack>
             </Container>
