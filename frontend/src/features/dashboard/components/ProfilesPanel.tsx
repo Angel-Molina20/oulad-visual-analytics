@@ -27,6 +27,7 @@ type ClusterOutcomeRow = {
 type Props = {
     data: ProfilesResponse | null
     clusterOutcomes?: ClusterOutcomeRow[] | null
+    selectedCluster?: number | null
 }
 
 const ORDER = ["Pass", "Distinction", "Fail", "Withdrawn"] as const
@@ -41,7 +42,7 @@ function chipColor(tone: "default" | "success" | "warning") {
     return "default"
 }
 
-export default function ProfilesPanel({ data, clusterOutcomes }: Props) {
+export default function ProfilesPanel({ data, clusterOutcomes, selectedCluster }: Props) {
     if (!data) return null
 
     // ====== Distribución de clusters ======
@@ -81,6 +82,8 @@ export default function ProfilesPanel({ data, clusterOutcomes }: Props) {
     const treemapParents: string[] = []
     const treemapValues: number[] = []
     const treemapText: string[] = []
+    const selectedMeta = selectedCluster !== null && selectedCluster !== undefined ? getClusterMeta(selectedCluster) : null
+    const treemapLevel = selectedMeta ? `cluster-${selectedMeta.code}` : undefined
 
     // Root
     treemapIds.push("root")
@@ -99,7 +102,7 @@ export default function ProfilesPanel({ data, clusterOutcomes }: Props) {
         fixed[0] = Number((fixed[0] + diff).toFixed(2))
         return fixed
     }
-// Cluster nodes
+    // Cluster nodes
     clusterIds.forEach((c) => {
         const meta = getClusterMeta(c)
         const cid = `cluster-${meta.code}`
@@ -144,6 +147,9 @@ export default function ProfilesPanel({ data, clusterOutcomes }: Props) {
                                     type: "bar",
                                     x: xCodes,
                                     y: yStudents,
+                                    marker: {
+                                        color: clusterIds.map((c) => (selectedCluster === c ? "rgba(25,118,210,0.9)" : "rgba(25,118,210,0.35)")),
+                                    },
                                     hovertemplate: "%{x}<br>Estudiantes: %{y}<extra></extra>",
                                 },
                             ]}
@@ -167,7 +173,11 @@ export default function ProfilesPanel({ data, clusterOutcomes }: Props) {
                                 {data.profiles.map((r) => {
                                     const meta = getClusterMeta(r.cluster)
                                     return (
-                                        <TableRow key={r.cluster}>
+                                        <TableRow key={r.cluster}
+                                             sx={{
+                                                backgroundColor: selectedCluster === r.cluster ? "rgba(25,118,210,0.08)" : undefined,
+                                             }}
+                                        >
                                             <TableCell>{meta.code}</TableCell>
                                             <TableCell>
                                                 <Chip
@@ -213,6 +223,7 @@ export default function ProfilesPanel({ data, clusterOutcomes }: Props) {
                                     valuesuffix: "%",
                                     hovertemplate: "%{text}<extra></extra>",
                                     branchvalues: "total",
+                                    level: treemapLevel
                                 } as any,
                             ]}
                             layout={{
@@ -242,7 +253,11 @@ export default function ProfilesPanel({ data, clusterOutcomes }: Props) {
                             </TableHead>
                             <TableBody>
                                 {rows.map((r) => (
-                                    <TableRow key={r.cluster}>
+                                    <TableRow key={r.cluster}
+                                              sx={{
+                                                  backgroundColor: selectedCluster === r.cluster ? "rgba(25,118,210,0.08)" : undefined,
+                                              }}
+                                    >
                                         <TableCell>{r.code}</TableCell>
                                         <TableCell>
                                             <Chip

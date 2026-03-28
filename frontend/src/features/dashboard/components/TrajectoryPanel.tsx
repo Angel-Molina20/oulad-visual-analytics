@@ -12,7 +12,6 @@ import {
     TableRow,
     Typography,
 } from "@mui/material"
-import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded"
 import SectionCard from "../components/ui/SectionCard"
 import InsightCard from "../components/ui/InsightCard"
 import AnalysisDialog from "../components/ui/AnalysisDialog"
@@ -20,11 +19,24 @@ import { getTrajectoryRecommendations } from "../utils/recommendations"
 import { getTrajectoryInsights } from "../utils/insights"
 import { getTrajectoryConclusion } from "../utils/conclusions"
 import { getClusterMeta } from "../utils/clusterMeta"
+import { ToggleButton, ToggleButtonGroup } from "@mui/material"
+import { useBaseline } from "../hooks/useBaseline"
 import type { TrajectoryResponse } from "../../../types/api"
-import {useState} from "react";
+import {useState, useEffect, useRef} from "react";
 
-export default function TrajectoryPanel({ data }: { data: TrajectoryResponse | null }) {
+export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data: TrajectoryResponse | null, courseId: string, selectedWeek: number }) {
     if (!data) return null
+
+    const [baselineMode, setBaselineMode] = useState<"course" | "cluster">("course")
+
+    const studentCluster =
+        data?.trajectory?.length ? data.trajectory[data.trajectory.length - 1].cluster : null
+
+    const baseline = useBaseline(courseId, baselineMode === "course" ? null : studentCluster)
+
+    const bWeeks = baseline.data?.baseline?.map((b) => b.week_id) ?? []
+    const bClicks = baseline.data?.baseline?.map((b) => b.clicks_mean) ?? []
+    const bResources = baseline.data?.baseline?.map((b) => b.resources_mean) ?? []
 
     const weeks = data.trajectory.map((t) => t.week_id)
     const clicks = data.trajectory.map((t) => t.clicks_total)
@@ -41,6 +53,28 @@ export default function TrajectoryPanel({ data }: { data: TrajectoryResponse | n
         return acc
     }, {})
 
+    const rowRefs = useRef<Record<number, HTMLTableRowElement | null>>({})
+
+    useEffect(() => {
+        if (selectedWeek === null) return
+        const el = rowRefs.current[selectedWeek]
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" })
+    }, [selectedWeek])
+
+    const shapes =
+        selectedWeek === null
+            ? []
+            : [
+                {
+                    type: "line",
+                    x0: selectedWeek,
+                    x1: selectedWeek,
+                    y0: 0,
+                    y1: 1,
+                    yref: "paper",
+                    line: { width: 2 },
+                },
+            ]
 
     const dominantCluster = Object.keys(clustersCount).reduce(
         (best, key) => (clustersCount[key] > (clustersCount[best] || 0) ? key : best),
@@ -59,7 +93,6 @@ export default function TrajectoryPanel({ data }: { data: TrajectoryResponse | n
 
     return (
         <SectionCard
-            title={`Trayectoria del estudiante ${data.user_id}`}
             subtitle="Lectura temporal de la actividad semanal del estudiante."
         >
             <Grid container spacing={2}>
@@ -106,13 +139,15 @@ export default function TrajectoryPanel({ data }: { data: TrajectoryResponse | n
                     Observa picos, caídas prolongadas y cambios de cluster para entender la evolución del estudiante.
                 </Typography>
 
-                <Button
-                    variant="outlined"
-                    startIcon={<AutoAwesomeRoundedIcon />}
-                    onClick={() => setAnalysisOpen(true)}
+                <ToggleButtonGroup
+                    size="small"
+                    value={baselineMode}
+                    exclusive
+                    onChange={(_, v) => v && setBaselineMode(v)}
                 >
-                    Ver análisis
-                </Button>
+                    <ToggleButton value="course">Referencia curso</ToggleButton>
+                    <ToggleButton value="cluster">Referencia perfil</ToggleButton>
+                </ToggleButtonGroup>
             </Stack>
 
             <AnalysisDialog
@@ -127,27 +162,28 @@ export default function TrajectoryPanel({ data }: { data: TrajectoryResponse | n
 
             <Plot
                 data={[
+                    { type: "scatter", mode: "lines+markers", name: "Clicks (estudiante)", x: weeks, y: clicks },
                     {
                         type: "scatter",
-                        mode: "lines+markers",
-                        name: "Clicks",
-                        x: weeks,
-                        y: clicks,
+                        mode: "lines",
+                        name: baselineMode === "course" ? "Clicks (prom. curso)" : "Clicks (prom. perfil)",
+                        x: bWeeks,
+                        y: bClicks,
                     },
+                    { type: "scatter", mode: "lines+markers", name: "Recursos (estudiante)", x: weeks, y: resources },
                     {
                         type: "scatter",
-                        mode: "lines+markers",
-                        name: "Recursos",
-                        x: weeks,
-                        y: resources,
+                        mode: "lines",
+                        name: baselineMode === "course" ? "Recursos (prom. curso)" : "Recursos (prom. perfil)",
+                        x: bWeeks,
+                        y: bResources,
                     },
                 ]}
                 layout={{
-                    height: 320,
+                    height: 340,
                     margin: { l: 50, r: 20, t: 10, b: 40 },
-                    paper_bgcolor: "white",
-                    plot_bgcolor: "white",
-                    legend: { orientation: "h", y: 1.15 },
+                    legend: { orientation: "h", y: 1.18 },
+                    shapes,
                 }}
                 style={{ width: "100%" }}
                 config={{ responsive: true, displayModeBar: false }}
@@ -171,7 +207,16 @@ export default function TrajectoryPanel({ data }: { data: TrajectoryResponse | n
                             const metaRow = getClusterMeta(t.cluster)
 
                             return (
-                                <TableRow key={t.week_id} hover>
+                                <TableRow
+                                    key={t.week_id}
+                                    hover
+                                    ref={(el) => {
+                                        rowRefs.current[t.week_id] = el
+                                    }}
+                                    sx={{
+                                        backgroundColor: selectedWeek === t.week_id ? "rgba(25, 118, 210, 0.08)" : undefined,
+                                    }}
+                                >
                                     <TableCell align="right">{t.week_id}</TableCell>
                                     <TableCell align="right">{t.clicks_total}</TableCell>
                                     <TableCell align="right">{t.resources_touched}</TableCell>
