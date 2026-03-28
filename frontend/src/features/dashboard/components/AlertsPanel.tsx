@@ -122,6 +122,7 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
     }
 
     const openReviewDialog = (alert: AlertRow) => {
+        if (getStatus(alert) !== "open") return
         setNoteDialogAlert(alert)
         setNoteDialogMode("review")
         setNoteDialogValue(getNoteValue(alert) ?? "")
@@ -573,28 +574,17 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
 
                                         <TableCell align="center">
                                             <Stack direction="row" spacing={0.5} justifyContent="center">
-                                                {status === "resolved" ? (
-                                                    <Tooltip title="Revisado">
-                                                        <IconButton
-                                                            size="small"
-                                                            color="success"
-                                                            aria-label="Revisado"
-                                                            disabled
-                                                        >
-                                                            <CheckCircleRoundedIcon />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                ) : (
-                                                    <Tooltip title="Marcar revisado">
-                                                        <IconButton
-                                                            size="small"
-                                                            color="warning"
-                                                            aria-label="Marcar revisado"
-                                                            onClick={() => openReviewDialog(a)}
-                                                        >
-                                                            <CheckCircleRoundedIcon />
-                                                        </IconButton>
-                                                    </Tooltip>
+                                                {status !== "resolved" && (
+                                                     <Tooltip title="Marcar revisado">
+                                                         <IconButton
+                                                             size="small"
+                                                             color="warning"
+                                                             aria-label="Marcar revisado"
+                                                             onClick={() => openReviewDialog(a)}
+                                                         >
+                                                             <CheckCircleRoundedIcon />
+                                                         </IconButton>
+                                                     </Tooltip>
                                                 )}
                                                 {getNoteValue(a) ? (
                                                     <Tooltip title="Editar comentario">
