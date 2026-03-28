@@ -3,6 +3,7 @@ import type {
     ProfilesResponse,
     TrajectoryResponse,
 } from "../../../types/api"
+import { outcomeLabel } from "./outcomes"
 
 export function getProfilesInsights(data: ProfilesResponse | null): string[] {
     if (!data) return []
@@ -39,7 +40,7 @@ export function getProfilesInsights(data: ProfilesResponse | null): string[] {
     )
 
     insights.push(
-        `El resultado final predominante del curso es ${dominantOutcome}, con ${dominantOutcomeCount} estudiantes.`
+        `El resultado final predominante del curso es ${outcomeLabel(dominantOutcome)}, con ${dominantOutcomeCount} estudiantes.`
     )
 
     if (withdrawnRate >= 20) {
@@ -54,7 +55,7 @@ export function getProfilesInsights(data: ProfilesResponse | null): string[] {
 
     if (failCount > 0) {
         insights.push(
-            `Además del retiro, hay ${failCount} estudiantes en Fail, por lo que conviene revisar tanto abandono como bajo rendimiento.`
+            `Además del retiro, hay ${failCount} estudiantes en ${outcomeLabel("Fail")}, por lo que conviene revisar tanto abandono como bajo rendimiento.`
         )
     }
 
@@ -89,7 +90,7 @@ export function getAlertsInsights(data: AlertsResponse | null): string[] {
 
     if (withdrawnCount > passCount) {
         insights.push(
-            `Dentro del grupo de alertas predominan más casos Withdrawn que Pass, lo que refuerza la necesidad de intervención temprana.`
+            `Dentro del grupo de alertas predominan más casos ${outcomeLabel("Withdrawn")} que ${outcomeLabel("Pass")}, lo que refuerza la necesidad de intervención temprana.`
         )
     } else {
         insights.push(

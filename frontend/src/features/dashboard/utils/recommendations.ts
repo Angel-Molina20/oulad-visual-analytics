@@ -3,6 +3,7 @@ import type {
     ProfilesResponse,
     TrajectoryResponse,
 } from "../../../types/api"
+import { outcomeLabel } from "./outcomes"
 
 export function getProfilesRecommendations(data: ProfilesResponse | null): string[] {
     if (!data) return []
@@ -26,13 +27,13 @@ export function getProfilesRecommendations(data: ProfilesResponse | null): strin
 
     if (withdrawnRate >= 20) {
         recommendations.push(
-            "Prioriza seguimiento temprano en cursos o perfiles donde Withdrawn tenga peso alto."
+            `Prioriza seguimiento temprano en cursos o perfiles donde ${outcomeLabel("Withdrawn")} tenga peso alto.`
         )
     }
 
     if (failRate >= 10) {
         recommendations.push(
-            "Revisa actividades y evaluaciones en los perfiles con más casos de Fail."
+            `Revisa actividades y evaluaciones en los perfiles con más casos de ${outcomeLabel("Fail")}.`
         )
     }
 
@@ -61,7 +62,7 @@ export function getAlertsRecommendations(data: AlertsResponse | null): string[] 
 
     if (withdrawn.length > 0) {
         recommendations.push(
-            "Compara los casos Withdrawn con su nivel de actividad para buscar señales tempranas de abandono."
+            `Compara los casos ${outcomeLabel("Withdrawn")} con su nivel de actividad para buscar señales tempranas de abandono.`
         )
     }
 
