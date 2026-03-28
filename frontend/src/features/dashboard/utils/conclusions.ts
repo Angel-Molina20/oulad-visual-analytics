@@ -3,6 +3,7 @@ import type {
     ProfilesResponse,
     TrajectoryResponse,
 } from "../../../types/api"
+import { outcomeLabel } from "./outcomes"
 
 export function getProfilesConclusion(data: ProfilesResponse | null): string {
     if (!data) return ""
@@ -25,14 +26,19 @@ export function getProfilesConclusion(data: ProfilesResponse | null): string {
     }, {})
 
     const totalStudents = Object.values(totals).reduce((acc, val) => acc + val, 0)
+    const withdrawnCount = totals["Withdrawn"] ?? 0
     const withdrawnRate =
-        totalStudents > 0 ? ((totals["Withdrawn"] ?? 0) / totalStudents) * 100 : 0
+        totalStudents > 0 ? (withdrawnCount / totalStudents) * 100 : 0
+
+    const withdrawalLabel = outcomeLabel("Withdrawn")
+    const withdrawnDesc = `${withdrawalLabel} representa estudiantes que abandonaron el curso.`
+    const rateText = `${withdrawnRate.toFixed(1)}% (${withdrawnCount} de ${totalStudents})`
 
     if (withdrawnRate >= 20) {
-        return `El curso está dominado por el cluster C${dominantCluster.cluster}, pero la tasa de retiro es ${withdrawnRate.toFixed(1)}%, por lo que conviene vigilar perfiles con señales de abandono.`
+        return `El curso está dominado por el cluster C${dominantCluster.cluster}. La tasa de ${withdrawalLabel} es ${rateText}, lo que indica un nivel alto de abandono. ${withdrawnDesc} Se recomienda priorizar perfiles con señales tempranas de desconexión.`
     }
 
-    return `El curso está dominado por el cluster C${dominantCluster.cluster} y muestra una tasa de retiro de ${withdrawnRate.toFixed(1)}%, lo que sugiere un comportamiento relativamente estable.`
+    return `El curso está dominado por el cluster C${dominantCluster.cluster}. La tasa de ${withdrawalLabel} es ${rateText}, lo que sugiere un comportamiento relativamente estable. ${withdrawnDesc}`
 }
 
 export function getAlertsConclusion(data: AlertsResponse | null): string {
@@ -43,12 +49,16 @@ export function getAlertsConclusion(data: AlertsResponse | null): string {
     const alerts = data.alerts
     const highRiskCount = alerts.filter((a) => a.risk_score >= 0.75).length
     const top = alerts[0]
+    const totalAlerts = alerts.length
+    const highRiskRate = (highRiskCount / Math.max(totalAlerts, 1)) * 100
 
-    if (highRiskCount >= Math.ceil(alerts.length * 0.4)) {
-        return `La semana ${data.week_id} concentra varios casos de riesgo alto. El estudiante ${top.user_id} aparece como prioridad inmediata de revisión.`
+    const riskText = `${highRiskRate.toFixed(1)}% (${highRiskCount} de ${totalAlerts})`
+
+    if (highRiskRate >= 40) {
+        return `La semana ${data.week_id} tiene una concentración alta de casos de riesgo: ${riskText}. Este porcentaje indica que una parte relevante de los estudiantes priorizados presenta señales fuertes de abandono o bajo rendimiento. El estudiante ${top.user_id} es la prioridad inmediata de revisión.`
     }
 
-    return `La semana ${data.week_id} presenta alertas activas, pero con una concentración moderada de riesgo. El estudiante ${top.user_id} sigue siendo el primer caso a revisar.`
+    return `La semana ${data.week_id} presenta alertas activas con una concentración moderada de riesgo: ${riskText}. Esto sugiere que hay señales de alerta, pero no generalizadas. El estudiante ${top.user_id} sigue siendo el primer caso a revisar.`
 }
 
 export function getTrajectoryConclusion(data: TrajectoryResponse | null): string {
@@ -63,13 +73,15 @@ export function getTrajectoryConclusion(data: TrajectoryResponse | null): string
     const lastClicks = clicks[clicks.length - 1] ?? 0
     const change = firstClicks > 0 ? ((lastClicks - firstClicks) / firstClicks) * 100 : 0
 
+    const changeText = `${Math.abs(change).toFixed(1)}%`
+
     if (change <= -30) {
-        return `El estudiante muestra una caída sostenida de actividad de ${Math.abs(change).toFixed(1)}% entre el inicio y el final de la trayectoria, señal de posible desenganche.`
+        return `La actividad cae ${changeText} entre la primera y la última semana. Este porcentaje representa la reducción relativa de interacción y sugiere riesgo de desenganche sostenido.`
     }
 
     if (change >= 30) {
-        return `El estudiante muestra una mejora de actividad de ${change.toFixed(1)}% entre el inicio y el final de la trayectoria, señal de mayor involucramiento con el curso.`
+        return `La actividad aumenta ${changeText} entre la primera y la última semana. Este porcentaje refleja una mejora relativa de interacción y sugiere mayor involucramiento con el curso.`
     }
 
-    return "La trayectoria del estudiante se mantiene relativamente estable, sin cambios extremos entre el inicio y el final del curso."
+    return "La trayectoria se mantiene estable: la variación relativa de actividad entre el inicio y el final es pequeña, por lo que no se observan cambios extremos en el compromiso del estudiante."
 }

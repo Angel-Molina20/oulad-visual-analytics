@@ -14,9 +14,13 @@ import {
     TableRow,
     TextField,
     Typography,
+    IconButton,
+    Tooltip,
 } from "@mui/material"
 import { useNavigate } from "react-router-dom"
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded"
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded"
+import AssessmentRoundedIcon from "@mui/icons-material/AssessmentRounded"
 import SectionCard from "../components/ui/SectionCard"
 import InsightCard from "../components/ui/InsightCard"
 import AnalysisDialog from "../components/ui/AnalysisDialog"
@@ -24,8 +28,10 @@ import { getAlertsRecommendations } from "../utils/recommendations"
 import { getAlertsInsights } from "../utils/insights"
 import { getAlertsConclusion } from "../utils/conclusions"
 import type { AlertsResponse } from "../../../types/api"
+import type { AlertRow } from "../../../types/api"
 import RiskBreakdown from "./RiskBreakdown"
 import { getClusterMeta } from "../utils/clusterMeta"
+import { outcomeLabel } from "../utils/outcomes"
 
 type RiskFilterValue = "all" | "high" | "medium" | "low"
 type ClusterFilterValue = "all" | "0" | "1" | "2"
@@ -45,6 +51,8 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
     const [page, setPage] = useState(0)
     const [rowsPerPage, setRowsPerPage] = useState(8)
     const [analysisOpen, setAnalysisOpen] = useState(false)
+    const [caseAnalysisOpen, setCaseAnalysisOpen] = useState(false)
+    const [selectedAlert, setSelectedAlert] = useState<AlertRow | null>(null)
 
     const filteredRows = useMemo(() => {
         if (!data) return []
@@ -93,6 +101,38 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
         setClusterFilter("all")
         setPage(0)
     }
+
+    const openCaseAnalysis = (alert: AlertRow) => {
+        setSelectedAlert(alert)
+        setCaseAnalysisOpen(true)
+    }
+
+    const caseMeta = selectedAlert ? getClusterMeta(selectedAlert.cluster) : null
+    const caseInsights = selectedAlert
+        ? [
+            `Resultado final: ${outcomeLabel(selectedAlert.final_result)}`,
+            `Cluster actual: ${caseMeta?.code} · ${caseMeta?.label}`,
+            `Clicks: ${selectedAlert.clicks_total} · Recursos: ${selectedAlert.resources_touched}`,
+            `Eventos: ${selectedAlert.events_count} · Riesgo: ${(selectedAlert.risk_score * 100).toFixed(0)}%`,
+            selectedAlert.reasons?.length ? `Señales detectadas: ${selectedAlert.reasons.slice(0, 2).join(" / ")}` : "",
+        ].filter(Boolean)
+        : []
+
+    const caseRecommendations = selectedAlert
+        ? [
+            selectedAlert.risk_score >= 0.75
+                ? "Prioriza este caso en la revisión semanal y abre su trayectoria completa."
+                : "Revisa la tendencia reciente antes de decidir intervención.",
+            selectedAlert.resources_touched <= 20
+                ? "Actividad baja en recursos. Sugiere revisar si el estudiante accede al material clave."
+                : "Actividad de recursos moderada. Verifica si hay cambios recientes en evaluaciones.",
+            selectedAlert.final_result === "Withdrawn"
+                ? "Contacta con el estudiante para confirmar continuidad y ofrecer apoyo temprano."
+                : selectedAlert.final_result === "Fail"
+                    ? "Revisa evaluaciones recientes y propone un plan de recuperación."
+                    : "Mantén seguimiento y valida si el riesgo es coyuntural.",
+        ]
+        : []
 
     useEffect(() => {
         if (selectedCluster === null) {
@@ -167,6 +207,24 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                 conclusion={alertConclusion}
                 insights={alertNarrative}
                 recommendations={alertRecommendations}
+            />
+
+            <AnalysisDialog
+                open={caseAnalysisOpen}
+                onClose={() => setCaseAnalysisOpen(false)}
+                title={selectedAlert ? `Análisis del caso ${selectedAlert.user_id}` : "Análisis del caso"}
+                subtitle={
+                    selectedAlert
+                        ? `Curso ${courseId} · Semana ${selectedAlert.week_id}`
+                        : ""
+                }
+                conclusion={
+                    selectedAlert
+                        ? `Riesgo estimado ${Math.round(selectedAlert.risk_score * 100)}%. Este porcentaje resume señales de baja actividad y cambios recientes, y sugiere probabilidad de ${outcomeLabel(selectedAlert.final_result)} si no hay intervención.`
+                        : undefined
+                }
+                insights={caseInsights}
+                recommendations={caseRecommendations}
             />
 
             <Stack spacing={2}>
@@ -293,25 +351,46 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                                                         ? "success"
                                                         : meta.tone === "warning"
                                                             ? "warning"
-                                                            : "default"
+                                                            : meta.tone === "error"
+                                                                ? "error"
+                                                                : "default"
                                                 }
                                                 variant="outlined"
                                             />
                                         </TableCell>
 
-                                        <TableCell>{a.final_result ?? "-"}</TableCell>
+                                        <TableCell>{outcomeLabel(a.final_result)}</TableCell>
                                         <TableCell>
                                             <RiskBreakdown a={a} />
                                         </TableCell>
 
                                         <TableCell align="center">
-                                            <Button
-                                                variant="contained"
-                                                size="small"
-                                                onClick={() => navigate(`/trajectory/${courseId}/${a.user_id}?week=${a.week_id}`)}
-                                            >
-                                                Ver trayectoria
-                                            </Button>
+                                            <Stack direction="row" spacing={0.5} justifyContent="center">
+                                                <Tooltip title="Ver trayectoria">
+                                                    <IconButton
+                                                        color="primary"
+                                                        size="small"
+                                                        aria-label="Ver trayectoria"
+                                                        onClick={() =>
+                                                            navigate(
+                                                                `/trajectory/${courseId}/${a.user_id}?week=${a.week_id}`
+                                                            )
+                                                        }
+                                                    >
+                                                        <VisibilityRoundedIcon />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title="Ver análisis del caso">
+                                                    <IconButton
+                                                        color="secondary"
+                                                        size="small"
+                                                        aria-label="Ver análisis del caso"
+                                                        onClick={() => openCaseAnalysis(a)}
+                                                    >
+                                                        <AssessmentRoundedIcon />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </Stack>
                                         </TableCell>
                                     </TableRow>
                                 )

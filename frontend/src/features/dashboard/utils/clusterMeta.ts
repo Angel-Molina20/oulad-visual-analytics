@@ -2,7 +2,7 @@ export type ClusterMeta = {
     code: string
     label: string
     description: string
-    tone: "default" | "success" | "warning"
+    tone: "default" | "success" | "warning" | "error"
 }
 
 // Estado interno actualizable
@@ -41,9 +41,17 @@ export function getClusterMeta(cluster: string | number): ClusterMeta {
 
 // Ajusta el tono en base a withdraw o fail
 function toneFromRates(rate_withdrawn: number, rate_fail: number): ClusterMeta["tone"] {
-    if (rate_withdrawn >= 0.20 || rate_fail >= 0.20) return "warning"
-    if (rate_withdrawn <= 0.10 && rate_fail <= 0.10) return "success"
-    return "default"
+    if (rate_withdrawn >= 0.20 || rate_fail >= 0.20) return "success"
+    if (rate_withdrawn <= 0.10 && rate_fail <= 0.10) return "error"
+    return "warning"
+}
+
+function toneFromLabel(label: string): ClusterMeta["tone"] | null {
+    const l = label.toLowerCase()
+    if (l.includes("alta")) return "success"
+    if (l.includes("baja")) return "error"
+    if (l.includes("media")) return "warning"
+    return null
 }
 
 type ClusterLabelApi = {
@@ -65,11 +73,14 @@ export async function loadClusterMeta(apiUrl: string) {
     const next: Record<string, ClusterMeta> = {}
     for (const c of clusters) {
         const key = String(c.cluster)
+        const label = c.label || `Cluster ${key}`
+        const tone = toneFromLabel(label) ?? toneFromRates(c.rate_withdrawn ?? 0, c.rate_fail ?? 0)
+
         next[key] = {
             code: `C${key}`,
-            label: c.label || `Cluster ${key}`,
+            label,
             description: c.description || "Perfil sin descripción disponible.",
-            tone: toneFromRates(c.rate_withdrawn ?? 0, c.rate_fail ?? 0),
+            tone,
         }
     }
 

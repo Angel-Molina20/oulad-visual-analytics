@@ -15,6 +15,7 @@ import {
 } from "@mui/material"
 import type { ProfilesResponse } from "../../../types/api"
 import { getClusterMeta } from "../utils/clusterMeta"
+import { outcomeLabel, OUTCOME_ORDER } from "../utils/outcomes"
 
 type ClusterOutcomeRow = {
     cluster: number
@@ -30,15 +31,16 @@ type Props = {
     selectedCluster?: number | null
 }
 
-const ORDER = ["Pass", "Distinction", "Fail", "Withdrawn"] as const
+const ORDER = OUTCOME_ORDER
 
 function pct(n: number) {
     return `${(n * 100).toFixed(1)}%`
 }
 
-function chipColor(tone: "default" | "success" | "warning") {
+function chipColor(tone: "default" | "success" | "warning" | "error") {
     if (tone === "success") return "success"
     if (tone === "warning") return "warning"
+    if (tone === "error") return "error"
     return "default"
 }
 
@@ -124,10 +126,10 @@ export default function ProfilesPanel({ data, clusterOutcomes, selectedCluster }
 
         ORDER.forEach((k, i) => {
             treemapIds.push(`${parentId}-${k}`)
-            treemapLabels.push(k)
+            treemapLabels.push(outcomeLabel(k))
             treemapParents.push(parentId)
             treemapValues.push(vals[i])
-            treemapText.push(`${meta.label}<br>${k}: ${vals[i].toFixed(1)}%`)
+            treemapText.push(`${meta.label}<br>${outcomeLabel(k)}: ${vals[i].toFixed(1)}%`)
         })
     })
 
@@ -245,10 +247,10 @@ export default function ProfilesPanel({ data, clusterOutcomes, selectedCluster }
                                     <TableCell>Cluster</TableCell>
                                     <TableCell>Perfil</TableCell>
                                     <TableCell align="right">Total</TableCell>
-                                    <TableCell align="right">Pass</TableCell>
-                                    <TableCell align="right">Dist.</TableCell>
-                                    <TableCell align="right">Fail</TableCell>
-                                    <TableCell align="right">Withd.</TableCell>
+                                    <TableCell align="right">Aprobado</TableCell>
+                                    <TableCell align="right">Distincion</TableCell>
+                                    <TableCell align="right">Reprobado</TableCell>
+                                    <TableCell align="right">Retirado</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
