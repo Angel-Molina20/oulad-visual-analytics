@@ -1,5 +1,6 @@
 import { Card, CardContent, Grid, Typography, Chip, Stack, Box } from "@mui/material"
 import type { ClusterLabel } from "../hooks/useClusterLabels"
+import { outcomeLabel } from "../utils/outcomes"
 
 function pct(x: number) {
     return `${(x * 100).toFixed(1)}%`
@@ -91,9 +92,9 @@ export default function ClusterCards({ clusters, selectedCluster, onSelectCluste
                                         </Stack>
 
                                         <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-                                            <Chip size="small" variant="outlined" label={`Pass: ${pct(pass)}`} />
-                                            <Chip size="small" variant="outlined" label={`Fail: ${pct(fail)}`} />
-                                            <Chip size="small" label={`Withdrawn: ${pct(withdrawn)}`} />
+                                            <Chip size="small" variant="outlined" label={`${outcomeLabel("Pass")}: ${pct(pass)}`} />
+                                            <Chip size="small" variant="outlined" label={`${outcomeLabel("Fail")}: ${pct(fail)}`} />
+                                            <Chip size="small" label={`${outcomeLabel("Withdrawn")}: ${pct(withdrawn)}`} />
                                         </Stack>
 
                                         {smallSample && (

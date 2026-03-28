@@ -231,7 +231,9 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
                                                     ? "success"
                                                     : metaRow.tone === "warning"
                                                         ? "warning"
-                                                        : "default"
+                                                        : metaRow.tone === "error"
+                                                            ? "error"
+                                                            : "default"
                                             }
                                             variant="outlined"
                                         />
