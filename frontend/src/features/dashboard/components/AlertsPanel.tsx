@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import {
     Button,
     Grid,
@@ -24,7 +24,7 @@ import { getAlertsRecommendations } from "../utils/recommendations"
 import { getAlertsInsights } from "../utils/insights"
 import { getAlertsConclusion } from "../utils/conclusions"
 import type { AlertsResponse } from "../../../types/api"
-import RiskChip from "./RiskChip"
+import RiskBreakdown from "./RiskBreakdown"
 import { getClusterMeta } from "../utils/clusterMeta"
 
 type RiskFilterValue = "all" | "high" | "medium" | "low"
@@ -33,9 +33,10 @@ type ClusterFilterValue = "all" | "0" | "1" | "2"
 type Props = {
     data: AlertsResponse | null
     courseId: string
+    selectedCluster: number | null
 }
 
-export default function AlertsPanel({ data, courseId }: Props) {
+export default function AlertsPanel({ data, courseId, selectedCluster }: Props) {
     const navigate = useNavigate()
 
     const [studentFilter, setStudentFilter] = useState("")
@@ -74,7 +75,7 @@ export default function AlertsPanel({ data, courseId }: Props) {
     }, [filteredRows, page, rowsPerPage])
 
     const highRiskCount = filteredRows.filter((r) => r.risk_score >= 0.75).length
-    const topRiskStudent = filteredRows[0]
+    const topRiskStudent = [...filteredRows].sort((a, b) => b.risk_score - a.risk_score)[0]
     const avgClicks =
         filteredRows.length > 0
             ? Math.round(
@@ -92,6 +93,15 @@ export default function AlertsPanel({ data, courseId }: Props) {
         setClusterFilter("all")
         setPage(0)
     }
+
+    useEffect(() => {
+        if (selectedCluster === null) {
+            setClusterFilter("all")
+            return
+        }
+        setClusterFilter(String(selectedCluster) as ClusterFilterValue)
+        setPage(0)
+    }, [selectedCluster])
 
     if (!data) return null
 
@@ -291,14 +301,14 @@ export default function AlertsPanel({ data, courseId }: Props) {
 
                                         <TableCell>{a.final_result ?? "-"}</TableCell>
                                         <TableCell>
-                                            <RiskChip score={a.risk_score} />
+                                            <RiskBreakdown a={a} />
                                         </TableCell>
 
                                         <TableCell align="center">
                                             <Button
                                                 variant="contained"
                                                 size="small"
-                                                onClick={() => navigate(`/trajectory/${courseId}/${a.user_id}`)}
+                                                onClick={() => navigate(`/trajectory/${courseId}/${a.user_id}?week=${a.week_id}`)}
                                             >
                                                 Ver trayectoria
                                             </Button>
