@@ -2,6 +2,7 @@ import subprocess
 import sys
 
 JOBS = [
+    "00_smoke"
     "jobs.01_ingest_oulad",
     "jobs.02_build_events",
     "jobs.03_weekly_features",
