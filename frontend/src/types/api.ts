@@ -50,6 +50,18 @@ export type AlertRow = {
     has_prev?: number
 }
 
+export type AlertFeedback = {
+    id: number
+    course_id: string
+    week_id: number
+    user_id: number
+    risk_score: number | null
+    status: "open" | "in_review" | "resolved"
+    note: string | null
+    created_at: string
+    updated_at?: string | null
+}
+
 export type CohortPoint = {
     week_id: number
     cluster: number

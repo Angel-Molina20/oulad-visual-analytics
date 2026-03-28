@@ -13,6 +13,7 @@ import {
 } from "@mui/material"
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded"
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded"
+import NoteAltRoundedIcon from "@mui/icons-material/NoteAltRounded"
 import { Link, useLocation } from "react-router-dom"
 import { useEffect } from "react"
 import { ENV } from "../../../../config/env"
@@ -27,6 +28,7 @@ type Props = {
 const items = [
     { label: "Resumen", icon: <DashboardRoundedIcon />, to: "/" },
     { label: "Analitica de cursos", icon: <InsightsRoundedIcon />, to: "/clusters" },
+    { label: "Notas de estudiantes", icon: <NoteAltRoundedIcon />, to: "/notes" },
 ]
 
 export default function AppShell({ children }: Props) {

@@ -16,25 +16,33 @@ import {
     Typography,
     IconButton,
     Tooltip,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
 } from "@mui/material"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded"
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded"
 import AssessmentRoundedIcon from "@mui/icons-material/AssessmentRounded"
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded"
+import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded"
+import AddCommentRoundedIcon from "@mui/icons-material/AddCommentRounded"
 import SectionCard from "../components/ui/SectionCard"
 import InsightCard from "../components/ui/InsightCard"
 import AnalysisDialog from "../components/ui/AnalysisDialog"
 import { getAlertsRecommendations } from "../utils/recommendations"
 import { getAlertsInsights } from "../utils/insights"
 import { getAlertsConclusion } from "../utils/conclusions"
-import type { AlertsResponse } from "../../../types/api"
-import type { AlertRow } from "../../../types/api"
+import type { AlertsResponse, AlertRow, AlertFeedback } from "../../../types/api"
 import RiskBreakdown from "./RiskBreakdown"
 import { getClusterMeta } from "../utils/clusterMeta"
 import { outcomeLabel } from "../utils/outcomes"
+import { apiGet, apiPost } from "../../../api/client"
 
 type RiskFilterValue = "all" | "high" | "medium" | "low"
 type ClusterFilterValue = "all" | "0" | "1" | "2"
+type StatusFilterValue = "all" | "open" | "in_review" | "resolved"
 
 type Props = {
     data: AlertsResponse | null
@@ -44,6 +52,7 @@ type Props = {
 
 export default function AlertsPanel({ data, courseId, selectedCluster }: Props) {
     const navigate = useNavigate()
+    const location = useLocation()
 
     const [studentFilter, setStudentFilter] = useState("")
     const [riskFilter, setRiskFilter] = useState<RiskFilterValue>("all")
@@ -53,11 +62,103 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
     const [analysisOpen, setAnalysisOpen] = useState(false)
     const [caseAnalysisOpen, setCaseAnalysisOpen] = useState(false)
     const [selectedAlert, setSelectedAlert] = useState<AlertRow | null>(null)
+    const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all")
+    const [feedback, setFeedback] = useState<AlertFeedback[]>([])
+    const [noteDialogOpen, setNoteDialogOpen] = useState(false)
+    const [noteDialogMode, setNoteDialogMode] = useState<"review" | "edit">("review")
+    const [noteDialogValue, setNoteDialogValue] = useState("")
+    const [noteDialogAlert, setNoteDialogAlert] = useState<AlertRow | null>(null)
+
+    useEffect(() => {
+        if (!data?.course_id) return
+        setFeedback([])
+        apiGet<AlertFeedback[]>(
+            `/ops/alerts/feedback?course_id=${encodeURIComponent(data.course_id)}&week_id=${data.week_id}`
+        )
+            .then(setFeedback)
+            .catch(() => setFeedback([]))
+    }, [data?.course_id, data?.week_id])
+
+    const feedbackMap = useMemo(() => {
+        const map = new Map<string, AlertFeedback>()
+        feedback.forEach((f) => {
+            map.set(`${f.course_id}-${f.week_id}-${f.user_id}`, f)
+        })
+        return map
+    }, [feedback])
+
+    const getStatus = (alert: AlertRow) => {
+        const key = `${courseId}-${alert.week_id}-${alert.user_id}`
+        return feedbackMap.get(key)?.status ?? "open"
+    }
+
+    const getNoteValue = (alert: AlertRow) => {
+        const key = `${courseId}-${alert.week_id}-${alert.user_id}`
+        return feedbackMap.get(key)?.note ?? null
+    }
+
+    const saveFeedback = async (alert: AlertRow, updates: Partial<AlertFeedback>) => {
+        const noteValue =
+            updates.note !== undefined
+                ? updates.note
+                : getNoteValue(alert)
+        const payload = {
+            course_id: courseId,
+            week_id: alert.week_id,
+            user_id: alert.user_id,
+            risk_score: alert.risk_score,
+            status: updates.status ?? getStatus(alert),
+            note: noteValue,
+        }
+        try {
+            const saved = await apiPost<AlertFeedback>("/ops/alerts/feedback", payload)
+            setFeedback((prev) => {
+                const next = prev.filter((f) => f.id !== saved.id)
+                return [...next, saved]
+            })
+        } catch (err) {
+            // Ignore for now; UI still shows draft
+        }
+    }
+
+    const openReviewDialog = (alert: AlertRow) => {
+        setNoteDialogAlert(alert)
+        setNoteDialogMode("review")
+        setNoteDialogValue(getNoteValue(alert) ?? "")
+        setNoteDialogOpen(true)
+    }
+
+    const openEditNoteDialog = (alert: AlertRow) => {
+        setNoteDialogAlert(alert)
+        setNoteDialogMode("edit")
+        setNoteDialogValue(getNoteValue(alert) ?? "")
+        setNoteDialogOpen(true)
+    }
+
+    const closeNoteDialog = () => {
+        setNoteDialogOpen(false)
+        setNoteDialogAlert(null)
+        setNoteDialogValue("")
+    }
+
+    const handleSaveReview = async (withNote: boolean) => {
+        if (!noteDialogAlert) return
+        const note = withNote ? (noteDialogValue.trim() || null) : null
+        await saveFeedback(noteDialogAlert, { status: "resolved", note })
+        closeNoteDialog()
+    }
+
+    const handleSaveEdit = async () => {
+        if (!noteDialogAlert) return
+        const note = noteDialogValue.trim() || null
+        await saveFeedback(noteDialogAlert, { status: getStatus(noteDialogAlert), note })
+        closeNoteDialog()
+    }
 
     const filteredRows = useMemo(() => {
         if (!data) return []
 
-        return data.alerts.filter((a) => {
+        const rows = data.alerts.filter((a) => {
             const matchesStudent =
                 !studentFilter.trim() || String(a.user_id).includes(studentFilter.trim())
 
@@ -73,9 +174,29 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
             const matchesCluster =
                 clusterFilter === "all" ? true : String(a.cluster) === clusterFilter
 
-            return matchesStudent && matchesRisk && matchesCluster
+            const status = getStatus(a)
+            const matchesStatus = statusFilter === "all" ? true : status === statusFilter
+
+            return matchesStudent && matchesRisk && matchesCluster && matchesStatus
         })
-    }, [data, studentFilter, riskFilter, clusterFilter])
+        const statusRank: Record<string, number> = {
+            open: 0,
+            in_review: 1,
+            resolved: 2,
+        }
+
+        rows.sort((a, b) => {
+            const statusA = getStatus(a)
+            const statusB = getStatus(b)
+            const rankDiff = (statusRank[statusA] ?? 9) - (statusRank[statusB] ?? 9)
+            if (rankDiff !== 0) return rankDiff
+            const riskDiff = b.risk_score - a.risk_score
+            if (riskDiff !== 0) return riskDiff
+            return a.user_id - b.user_id
+        })
+
+        return rows
+    }, [data, studentFilter, riskFilter, clusterFilter, statusFilter, feedbackMap])
 
     const paginatedRows = useMemo(() => {
         const start = page * rowsPerPage
@@ -99,6 +220,7 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
         setStudentFilter("")
         setRiskFilter("all")
         setClusterFilter("all")
+        setStatusFilter("all")
         setPage(0)
     }
 
@@ -142,6 +264,18 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
         setClusterFilter(String(selectedCluster) as ClusterFilterValue)
         setPage(0)
     }, [selectedCluster])
+
+    const statusLabel = (status: StatusFilterValue) => {
+        if (status === "resolved") return "Revisado"
+        if (status === "in_review") return "En revisión"
+        return "Pendiente"
+    }
+
+    const statusColor = (status: StatusFilterValue) => {
+        if (status === "resolved") return "success"
+        if (status === "in_review") return "info"
+        return "warning"
+    }
 
     if (!data) return null
 
@@ -227,6 +361,52 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                 recommendations={caseRecommendations}
             />
 
+            <Dialog open={noteDialogOpen} onClose={closeNoteDialog} maxWidth="sm" fullWidth>
+                <DialogTitle>
+                    {noteDialogMode === "review" ? "Marcar revisado" : "Editar nota"}
+                </DialogTitle>
+                <DialogContent sx={{ pt: 1 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        {noteDialogMode === "review"
+                            ? "¿Quieres agregar una nota antes de marcar el caso como revisado?"
+                            : "Actualiza la nota del caso."
+                        }
+                    </Typography>
+                    <TextField
+                        multiline
+                        minRows={3}
+                        label="Nota del docente"
+                        placeholder="Escribe una observación breve"
+                        value={noteDialogValue}
+                        onChange={(e) => setNoteDialogValue(e.target.value)}
+                        fullWidth
+                    />
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                    <Button onClick={closeNoteDialog}>Cancelar</Button>
+                    {noteDialogMode === "review" ? (
+                        <>
+                            <Button
+                                variant="outlined"
+                                onClick={() => handleSaveReview(false)}
+                            >
+                                Sin nota
+                            </Button>
+                            <Button
+                                variant="contained"
+                                onClick={() => handleSaveReview(true)}
+                            >
+                                Guardar y revisar
+                            </Button>
+                        </>
+                    ) : (
+                        <Button variant="contained" onClick={handleSaveEdit}>
+                            Guardar nota
+                        </Button>
+                    )}
+                </DialogActions>
+            </Dialog>
+
             <Stack spacing={2}>
                 <Grid container spacing={2} alignItems="stretch">
                     <Grid item xs={12} md={4}>
@@ -242,7 +422,7 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                         />
                     </Grid>
 
-                    <Grid item xs={12} md={3}>
+                    <Grid item xs={12} md={2}>
                         <TextField
                             select
                             label="Riesgo"
@@ -260,7 +440,7 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                         </TextField>
                     </Grid>
 
-                    <Grid item xs={12} md={3}>
+                    <Grid item xs={12} md={2}>
                         <TextField
                             select
                             label="Cluster"
@@ -275,6 +455,24 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                             <MenuItem value="0">C0 · Alta participación</MenuItem>
                             <MenuItem value="1">C1 · Baja participación</MenuItem>
                             <MenuItem value="2">C2 · Participación media</MenuItem>
+                        </TextField>
+                    </Grid>
+
+                    <Grid item xs={12} md={2}>
+                        <TextField
+                            select
+                            label="Estado"
+                            value={statusFilter}
+                            onChange={(e) => {
+                                setStatusFilter(e.target.value as StatusFilterValue)
+                                setPage(0)
+                            }}
+                            fullWidth
+                        >
+                            <MenuItem value="all">Todos</MenuItem>
+                            <MenuItem value="open">Abiertas</MenuItem>
+                            <MenuItem value="in_review">En revisión</MenuItem>
+                            <MenuItem value="resolved">Resueltas</MenuItem>
                         </TextField>
                     </Grid>
 
@@ -326,7 +524,10 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                                 <TableCell sx={{ fontWeight: 700, width: "12%" }}>Cluster</TableCell>
                                 <TableCell sx={{ fontWeight: 700, width: "12%" }}>Resultado</TableCell>
                                 <TableCell sx={{ fontWeight: 700, width: "12%" }}>Riesgo</TableCell>
-                                <TableCell align="center" sx={{ fontWeight: 700, width: "16%" }}>
+                                <TableCell align="center" sx={{ fontWeight: 700, width: "10%" }}>
+                                    Estado
+                                </TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 700, width: "22%" }}>
                                     Acción
                                 </TableCell>
                             </TableRow>
@@ -335,6 +536,7 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                         <TableBody>
                             {paginatedRows.map((a) => {
                                 const meta = getClusterMeta(a.cluster)
+                                const status = getStatus(a)
                                 return (
                                     <TableRow key={`${a.user_id}-${a.week_id}`} hover>
                                         <TableCell>{a.user_id}</TableCell>
@@ -365,17 +567,87 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                                         </TableCell>
 
                                         <TableCell align="center">
+                                            <Chip
+                                                size="small"
+                                                label={statusLabel(status)}
+                                                color={statusColor(status)}
+                                                variant="outlined"
+                                            />
+                                        </TableCell>
+
+                                        <TableCell align="center">
                                             <Stack direction="row" spacing={0.5} justifyContent="center">
+                                                {status === "resolved" ? (
+                                                    <Tooltip title="Revisado">
+                                                        <IconButton
+                                                            size="small"
+                                                            color="success"
+                                                            aria-label="Revisado"
+                                                            disabled
+                                                        >
+                                                            <CheckCircleRoundedIcon />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                ) : (
+                                                    <Tooltip
+                                                        title={
+                                                            status === "in_review"
+                                                                ? "En revisión"
+                                                                : "Marcar revisado"
+                                                        }
+                                                    >
+                                                        <IconButton
+                                                            size="small"
+                                                            color={status === "in_review" ? "info" : "warning"}
+                                                            aria-label="Marcar revisado"
+                                                            onClick={() => openReviewDialog(a)}
+                                                        >
+                                                            <CheckCircleRoundedIcon />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                )}
+                                                {getNoteValue(a) ? (
+                                                    <Tooltip title="Editar comentario">
+                                                        <IconButton
+                                                            color="default"
+                                                            size="small"
+                                                            aria-label="Editar comentario"
+                                                            onClick={() => openEditNoteDialog(a)}
+                                                        >
+                                                            <EditNoteRoundedIcon />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                ) : (
+                                                    <Tooltip title="Agregar comentario">
+                                                        <IconButton
+                                                            color="primary"
+                                                            size="small"
+                                                            aria-label="Agregar comentario"
+                                                            onClick={() => openEditNoteDialog(a)}
+                                                        >
+                                                            <AddCommentRoundedIcon />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                )}
                                                 <Tooltip title="Ver trayectoria">
                                                     <IconButton
                                                         color="primary"
                                                         size="small"
                                                         aria-label="Ver trayectoria"
-                                                        onClick={() =>
+                                                        onClick={() => {
+                                                            apiPost("/ops/audit-events", {
+                                                                action: "view_trajectory",
+                                                                payload: {
+                                                                    course_id: courseId,
+                                                                    user_id: a.user_id,
+                                                                    week_id: a.week_id,
+                                                                },
+                                                            }).catch(() => null)
+                                                            const from = encodeURIComponent(location.pathname)
                                                             navigate(
-                                                                `/trajectory/${courseId}/${a.user_id}?week=${a.week_id}`
+                                                                `/trajectory/${courseId}/${a.user_id}?week=${a.week_id}&from=${from}`
                                                             )
-                                                        }
+                                                        }}
                                                     >
                                                         <VisibilityRoundedIcon />
                                                     </IconButton>
@@ -397,27 +669,27 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                             })}
                         </TableBody>
                     </Table>
-                </TableContainer>
 
-                <TablePagination
-                    component="div"
-                    count={filteredRows.length}
-                    page={page}
-                    onPageChange={(_, newPage) => setPage(newPage)}
-                    rowsPerPage={rowsPerPage}
-                    onRowsPerPageChange={(e) => {
-                        setRowsPerPage(Number(e.target.value))
-                        setPage(0)
-                    }}
-                    rowsPerPageOptions={[5, 8, 10, 20]}
-                    labelRowsPerPage="Filas por página"
-                    sx={{
-                        ".MuiTablePagination-toolbar": {
-                            minHeight: 48,
-                            px: 0,
-                        },
-                    }}
-                />
+                    <TablePagination
+                        component="div"
+                        count={filteredRows.length}
+                        page={page}
+                        onPageChange={(_, newPage) => setPage(newPage)}
+                        rowsPerPage={rowsPerPage}
+                        onRowsPerPageChange={(e) => {
+                            setRowsPerPage(Number(e.target.value))
+                            setPage(0)
+                        }}
+                        rowsPerPageOptions={[5, 8, 10, 20]}
+                        labelRowsPerPage="Filas por página"
+                        sx={{
+                            ".MuiTablePagination-toolbar": {
+                                minHeight: 48,
+                                px: 0,
+                            },
+                        }}
+                    />
+                </TableContainer>
             </Stack>
         </SectionCard>
     )
