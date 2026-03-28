@@ -1,5 +1,8 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
+from sqlalchemy.orm import Session
+from ..db import get_session
 from ..services.mart_store import load_mart
+from ..services.risk_config_store import get_active_risk_config
 
 router = APIRouter(prefix="/analytics")
 
@@ -58,7 +61,7 @@ def student_trajectory(user_id: int, course_id: str = Query(...)):
 
 
 @router.get("/courses/{course_id}/alerts")
-def alerts(course_id: str, week_id: int = Query(...), top: int = Query(20, ge=1, le=200)):
+def alerts(course_id: str, week_id: int = Query(...), top: int = Query(20, ge=1, le=200), session: Session = Depends(get_session)):
     df = load_mart()
     d = df[df["course_id"] == course_id].copy()
 
@@ -107,16 +110,17 @@ def alerts(course_id: str, week_id: int = Query(...), top: int = Query(20, ge=1,
     cur["low_resources"] = (cur["resources_touched"] <= p25_resources).astype(int)
 
     # score 0..1
+    cfg = get_active_risk_config(session)
     cur["risk_score"] = (
-            0.55 * cur["drop_clicks_pct"]
-            + 0.20 * cur["low_clicks"]
-            + 0.15 * cur["low_events"]
-            + 0.10 * cur["low_resources"]
+            cfg["w_drop_clicks"] * cur["drop_clicks_pct"]
+            + cfg["w_low_clicks"] * cur["low_clicks"]
+            + cfg["w_low_events"] * cur["low_events"]
+            + cfg["w_low_resources"] * cur["low_resources"]
     ).clip(0.0, 1.0)
 
     def reasons_row(r):
         reasons = []
-        if r["drop_clicks_pct"] >= 0.30:
+        if r["drop_clicks_pct"] >= cfg["drop_threshold"]:
             reasons.append(f"Caída de clicks vs semana anterior ({r['drop_clicks_pct']*100:.0f}%)")
         if r["low_clicks"] == 1:
             reasons.append("Clicks en el 25% más bajo del curso")
@@ -124,8 +128,6 @@ def alerts(course_id: str, week_id: int = Query(...), top: int = Query(20, ge=1,
             reasons.append("Eventos en el 25% más bajo del curso")
         if r["low_resources"] == 1:
             reasons.append("Recursos en el 25% más bajo del curso")
-        if r["has_prev"] == 1 and r["drop_clicks_pct"] >= 0.30:
-            reasons.append(f"Caída de clicks vs semana anterior ({r['drop_clicks_pct']*100:.0f}%)")
         if not reasons:
             reasons.append("Actividad baja relativa")
         return reasons[:3]

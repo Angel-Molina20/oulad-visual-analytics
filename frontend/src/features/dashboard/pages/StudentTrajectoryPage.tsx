@@ -34,6 +34,20 @@ export default function StudentTrajectoryPage() {
         return Number.isFinite(w) ? w : null
     }, [location.search])
 
+    const returnTo = useMemo(() => {
+        const sp = new URLSearchParams(location.search)
+        const raw = sp.get("from")
+        if (!raw) return "/"
+        const decoded = decodeURIComponent(raw)
+        return decoded.startsWith("/") ? decoded : "/"
+    }, [location.search])
+
+    const returnLabel = useMemo(() => {
+        if (returnTo === "/notes") return "Notas de estudiantes"
+        if (returnTo === "/clusters") return "Analitica de cursos"
+        return "Resumen"
+    }, [returnTo])
+
     return (
         <AppShell>
             <Container
@@ -48,7 +62,7 @@ export default function StudentTrajectoryPage() {
                         <Breadcrumbs>
                             <Box
                                 component={RouterLink}
-                                to="/"
+                                to={returnTo}
                                 sx={{
                                     display: "inline-flex",
                                     alignItems: "center",
@@ -58,7 +72,7 @@ export default function StudentTrajectoryPage() {
                                 }}
                             >
                                 <HomeRoundedIcon fontSize="small" />
-                                <span>Dashboard</span>
+                                <span>{returnLabel}</span>
                             </Box>
 
                             <Box
@@ -89,11 +103,11 @@ export default function StudentTrajectoryPage() {
 
                             <Button
                                 component={RouterLink}
-                                to="/"
+                                to={returnTo}
                                 variant="outlined"
                                 startIcon={<ArrowBackRoundedIcon />}
                             >
-                                Volver al dashboard
+                                Volver a {returnLabel}
                             </Button>
                         </Stack>
                     </Stack>
