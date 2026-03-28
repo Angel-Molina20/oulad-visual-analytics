@@ -1,0 +1,584 @@
+openapi: 3.0.3
+info:
+  title: OULAD Visual Analytics API
+  version: 0.1.0
+  description: API para analítica de aprendizaje basada en OULAD.
+servers:
+  - url: http://localhost:8000
+tags:
+  - name: health
+    description: Estado de la API.
+  - name: courses
+    description: Metadatos de cursos disponibles.
+  - name: meta
+    description: Metadatos globales de clustering.
+  - name: analytics
+    description: Endpoints de analítica por curso y estudiante.
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Health check
+      description: Verifica que la API esté disponible y responda correctamente.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+  /courses:
+    get:
+      tags: [courses]
+      summary: Listar cursos
+      description: Devuelve los identificadores de cursos disponibles en el mart procesado.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoursesResponse"
+              example:
+                courses: ["AAA_2013J", "BBB_2014B"]
+                count: 2
+  /meta/cluster-labels:
+    get:
+      tags: [meta]
+      summary: Etiquetas y métricas de clusters
+      description: Devuelve etiquetas globales de clusters y, opcionalmente, métricas recalculadas por curso.
+      parameters:
+        - name: course_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClusterLabelsResponse"
+  /analytics/courses/{course_id}/profiles:
+    get:
+      tags: [analytics]
+      summary: Perfiles por curso
+      description: Distribución de clusters y resultados finales para un curso.
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfilesResponse"
+  /analytics/students/{user_id}/trajectory:
+    get:
+      tags: [analytics]
+      summary: Trayectoria de estudiante
+      description: Serie temporal de métricas semanales de un estudiante dentro de un curso.
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: course_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrajectoryResponse"
+  /analytics/courses/{course_id}/alerts:
+    get:
+      tags: [analytics]
+      summary: Alertas de riesgo
+      description: Detecta estudiantes con caída de actividad y baja participación en una semana.
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: week_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+        - name: top
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertsResponse"
+  /analytics/courses/{course_id}/cohorts:
+    get:
+      tags: [analytics]
+      summary: Serie temporal por cohortes
+      description: Promedios semanales por cluster para una métrica seleccionada.
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: metric
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [clicks_total, resources_touched, events_count]
+        - name: week_min
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+        - name: week_max
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohortsResponse"
+  /analytics/courses/{course_id}/baseline:
+    get:
+      tags: [analytics]
+      summary: Baseline del curso
+      description: Promedios semanales del curso. Si se indica cluster, calcula el promedio solo para ese cluster.
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: cluster
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaselineResponse"
+  /analytics/courses/{course_id}/student-week:
+    get:
+      tags: [analytics]
+      summary: Detalle semanal de estudiante
+      description: Devuelve la fila de métricas para un estudiante en una semana específica.
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: week_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentWeekResponse"
+  /analytics/courses/{course_id}/cluster-outcomes:
+    get:
+      tags: [analytics]
+      summary: Resultados por cluster
+      description: Relación cluster vs resultado final usando una fila por estudiante, con conteos y tasas.
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClusterOutcomesResponse"
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+    CoursesResponse:
+      type: object
+      properties:
+        courses:
+          type: array
+          items:
+            type: string
+        count:
+          type: integer
+      required: [courses, count]
+    ProfilesResponse:
+      type: object
+      properties:
+        course_id:
+          type: string
+        profiles:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClusterCount"
+        outcomes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClusterOutcome"
+        note:
+          type: string
+      required: [course_id, profiles]
+    ClusterCount:
+      type: object
+      properties:
+        cluster:
+          type: integer
+        students:
+          type: integer
+      required: [cluster, students]
+    ClusterOutcome:
+      type: object
+      properties:
+        cluster:
+          type: integer
+        final_result:
+          type: string
+        students:
+          type: integer
+      required: [cluster, final_result, students]
+    TrajectoryResponse:
+      type: object
+      properties:
+        course_id:
+          type: string
+        user_id:
+          type: integer
+        trajectory:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrajectoryPoint"
+        note:
+          type: string
+      required: [course_id, user_id, trajectory]
+    TrajectoryPoint:
+      type: object
+      properties:
+        week_id:
+          type: integer
+        clicks_total:
+          type: number
+        resources_touched:
+          type: number
+        resource_types_touched:
+          type: number
+        events_count:
+          type: number
+        cluster:
+          type: integer
+        final_result:
+          type: string
+      required:
+        - week_id
+        - clicks_total
+        - resources_touched
+        - resource_types_touched
+        - events_count
+        - cluster
+        - final_result
+    AlertsResponse:
+      type: object
+      properties:
+        course_id:
+          type: string
+        week_id:
+          type: integer
+        alerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/AlertItem"
+        note:
+          type: string
+      required: [course_id, week_id, alerts]
+    AlertItem:
+      type: object
+      properties:
+        user_id:
+          type: integer
+        week_id:
+          type: integer
+        clicks_total:
+          type: number
+        resources_touched:
+          type: number
+        events_count:
+          type: number
+        cluster:
+          type: integer
+        final_result:
+          type: string
+        risk_score:
+          type: number
+        reasons:
+          type: array
+          items:
+            type: string
+        drop_clicks_pct:
+          type: number
+        prev_clicks:
+          type: number
+        prev_events:
+          type: number
+        prev_resources:
+          type: number
+        p25_clicks:
+          type: number
+        p25_events:
+          type: number
+        p25_resources:
+          type: number
+        low_clicks:
+          type: integer
+        low_events:
+          type: integer
+        low_resources:
+          type: integer
+        has_prev:
+          type: integer
+        prev_week:
+          type: integer
+      required:
+        - user_id
+        - week_id
+        - clicks_total
+        - resources_touched
+        - events_count
+        - cluster
+        - final_result
+        - risk_score
+        - reasons
+        - drop_clicks_pct
+        - prev_clicks
+        - prev_events
+        - prev_resources
+        - p25_clicks
+        - p25_events
+        - p25_resources
+        - low_clicks
+        - low_events
+        - low_resources
+        - has_prev
+        - prev_week
+    CohortsResponse:
+      type: object
+      properties:
+        course_id:
+          type: string
+        metric:
+          type: string
+        week_min:
+          type: integer
+          nullable: true
+        week_max:
+          type: integer
+          nullable: true
+        series:
+          type: array
+          items:
+            $ref: "#/components/schemas/CohortPoint"
+        note:
+          type: string
+      required: [course_id, metric, series]
+    CohortPoint:
+      type: object
+      properties:
+        week_id:
+          type: integer
+        cluster:
+          type: integer
+        value:
+          type: number
+        n:
+          type: integer
+      required: [week_id, cluster, value, n]
+    BaselineResponse:
+      type: object
+      properties:
+        course_id:
+          type: string
+        cluster:
+          type: integer
+          nullable: true
+        baseline:
+          type: array
+          items:
+            $ref: "#/components/schemas/BaselinePoint"
+        note:
+          type: string
+      required: [course_id, baseline]
+    BaselinePoint:
+      type: object
+      properties:
+        week_id:
+          type: integer
+        clicks_mean:
+          type: number
+        resources_mean:
+          type: number
+        events_mean:
+          type: number
+      required: [week_id, clicks_mean, resources_mean, events_mean]
+    StudentWeekResponse:
+      type: object
+      properties:
+        course_id:
+          type: string
+        week_id:
+          type: integer
+        user_id:
+          type: integer
+        row:
+          type: object
+          nullable: true
+          additionalProperties: true
+      required: [course_id, week_id, user_id, row]
+    ClusterOutcomesResponse:
+      type: object
+      properties:
+        course_id:
+          type: string
+        clusters:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClusterOutcomeRate"
+        note:
+          type: string
+      required: [course_id, clusters]
+    ClusterOutcomeRate:
+      type: object
+      properties:
+        cluster:
+          type: integer
+        final_result:
+          type: string
+        students:
+          type: integer
+        total_students:
+          type: integer
+        rate:
+          type: number
+      required: [cluster, final_result, students, total_students, rate]
+    ClusterLabelsResponse:
+      type: object
+      properties:
+        clusters:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClusterLabel"
+        note:
+          type: string
+      required: [clusters]
+    ClusterLabel:
+      type: object
+      properties:
+        cluster:
+          type: integer
+        label:
+          type: string
+        description:
+          type: string
+        total_students:
+          type: integer
+        clicks_mean:
+          type: number
+        resources_mean:
+          type: number
+        events_mean:
+          type: number
+        clicks_std_mean:
+          type: number
+        rate_pass:
+          type: number
+        rate_fail:
+          type: number
+        rate_withdrawn:
+          type: number
+        rate_distinction:
+          type: number
+        course_id:
+          type: string
+        total_students_course:
+          type: integer
+        clicks_mean_course:
+          type: number
+        resources_mean_course:
+          type: number
+        events_mean_course:
+          type: number
+        rate_pass_course:
+          type: number
+        rate_fail_course:
+          type: number
+        rate_withdrawn_course:
+          type: number
+        rate_distinction_course:
+          type: number
+      required:
+        - cluster
+        - label
+        - description
+        - total_students
+        - clicks_mean
+        - resources_mean
+        - events_mean
+        - clicks_std_mean
+        - rate_pass
+        - rate_fail
+        - rate_withdrawn
+        - rate_distinction
+
