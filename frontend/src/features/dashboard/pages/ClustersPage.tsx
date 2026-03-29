@@ -6,25 +6,32 @@ import ClusterCards from "../components/ClusterCards"
 import CohortsPanel from "../components/CohortsPanel"
 import ProfilesPanel from "../components/ProfilesPanel"
 import FiltersBar from "../components/FiltersBar"
-import { useCourses } from "../hooks/useCourses"
 import { useProfiles } from "../hooks/useProfiles"
 import { useClusterLabels } from "../hooks/useClusterLabels"
 import { useClusterOutcomes } from "../hooks/useClusterOutcomes"
 import { useCohorts } from "../hooks/useCohorts"
 import { loadClusterMeta } from "../utils/clusterMeta"
+import { useDashboardFilters } from "../context/DashboardFiltersContext"
 
 export default function ClustersPage() {
-    const { courses, error: errorCourses } = useCourses()
-    const [courseId, setCourseId] = useState("")
-    const [weekId, setWeekId] = useState(0)
+    const {
+        courses,
+        coursesError,
+        courseId,
+        setCourseId,
+        weekMode,
+        setWeekMode,
+        weeks,
+        weekMin,
+        weekMax,
+        setWeekMin,
+        setWeekMax,
+        minWeekAvailable,
+        maxWeekAvailable,
+        selectedCluster,
+        setSelectedCluster,
+    } = useDashboardFilters()
     const [cohortMetric, setCohortMetric] = useState("clicks_total")
-    const [weekMin, setWeekMin] = useState<number | null>(0)
-    const [weekMax, setWeekMax] = useState<number | null>(10)
-    const [selectedCluster, setSelectedCluster] = useState<number | null>(null)
-
-    useEffect(() => {
-        if (!courseId && courses.length) setCourseId(courses[0])
-    }, [courses, courseId])
 
     useEffect(() => {
         loadClusterMeta(ENV.API_URL)
@@ -35,7 +42,17 @@ export default function ClustersPage() {
     const clusterOut = useClusterOutcomes(courseId)
     const cohorts = useCohorts(courseId, cohortMetric, weekMin, weekMax)
 
-    const error = errorCourses || profiles.error || labels.error || clusterOut.error || cohorts.error
+    const error = coursesError || profiles.error || labels.error || clusterOut.error || cohorts.error
+
+    const handleApplyRange = (min: number | null, max: number | null) => {
+        if (min !== null && max !== null && min > max) {
+            setWeekMin(max)
+            setWeekMax(min)
+            return
+        }
+        setWeekMin(min)
+        setWeekMax(max)
+    }
 
     return (
         <AppShell>
@@ -54,10 +71,16 @@ export default function ClustersPage() {
                     <FiltersBar
                         courses={courses}
                         courseId={courseId}
-                        onCourseId={setCourseId}
-                        weekId={weekId}
-                        onWeekId={setWeekId}
-                        maxWeek={40}
+                        onCourseChange={setCourseId}
+                        weekMode={weekMode}
+                        onWeekModeChange={setWeekMode}
+                        weeks={weeks}
+                        weekMin={weekMin}
+                        weekMax={weekMax}
+                        minWeekAvailable={minWeekAvailable}
+                        maxWeekAvailable={maxWeekAvailable}
+                        onWeekMinChange={setWeekMin}
+                        onWeekMaxChange={setWeekMax}
                     />
 
                     {error && <Alert severity="error">{error}</Alert>}
@@ -73,16 +96,7 @@ export default function ClustersPage() {
                         onMetric={setCohortMetric}
                         weekMin={weekMin}
                         weekMax={weekMax}
-                        onApplyRange={(min, max) => {
-                            // normaliza si estan invertidos
-                            if (min !== null && max !== null && min > max) {
-                                setWeekMin(max)
-                                setWeekMax(min)
-                                return
-                            }
-                            setWeekMin(min)
-                            setWeekMax(max)
-                        }}
+                        onApplyRange={handleApplyRange}
                         selectedCluster={selectedCluster}
                     />
                     <ProfilesPanel

@@ -23,11 +23,11 @@ import {
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded"
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded"
 import AppShell from "../components/layout/AppShell"
-import { useCourses } from "../hooks/useCourses"
 import { useStudentNotes } from "../hooks/useStudentNotes"
 import { apiPost } from "../../../api/client"
 import type { AlertFeedback } from "../../../types/api"
 import { useNavigate, useLocation } from "react-router-dom"
+import { useDashboardFilters } from "../context/DashboardFiltersContext"
 
 type StatusFilterValue = "all" | "open" | "resolved"
 
@@ -46,8 +46,14 @@ type NoteRow = {
 export default function StudentNotesPage() {
     const navigate = useNavigate()
     const location = useLocation()
-    const { courses, error: errorCourses } = useCourses()
-    const [courseId, setCourseId] = useState("")
+    const {
+        courses,
+        coursesError,
+        courseId,
+        setCourseId,
+        minWeekAvailable,
+        maxWeekAvailable,
+    } = useDashboardFilters()
     const [studentFilter, setStudentFilter] = useState("")
     const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all")
     const [page, setPage] = useState(0)
@@ -72,7 +78,7 @@ export default function StudentNotesPage() {
         status: statusFilter === "all" ? undefined : statusFilter,
     })
 
-    const error = errorCourses || notes.error
+    const error = coursesError || notes.error
 
     const statusLabel = (status: StatusFilterValue) => {
         if (status === "resolved") return "Revisado"
@@ -103,6 +109,13 @@ export default function StudentNotesPage() {
         if (risk >= 0.75) return { border: "#d32f2f", text: "#d32f2f" }
         if (risk >= 0.45) return { border: "#f9a825", text: "#f9a825" }
         return { border: "#2e7d32", text: "#2e7d32" }
+    }
+
+    const riskTooltip = (risk: number | null) => {
+        if (risk === null || Number.isNaN(risk)) return "Sin riesgo calculado"
+        if (risk >= 0.75) return `Riesgo alto · ${(risk * 100).toFixed(0)}%`
+        if (risk >= 0.45) return `Riesgo medio · ${(risk * 100).toFixed(0)}%`
+        return `Riesgo bajo · ${(risk * 100).toFixed(0)}%`
     }
 
     const rows = useMemo(() => {
@@ -190,6 +203,11 @@ export default function StudentNotesPage() {
                                             placeholder="Todos los cursos"
                                             sx={filterFieldSx}
                                             fullWidth
+                                            helperText={
+                                                minWeekAvailable !== null && maxWeekAvailable !== null
+                                                    ? `Rango semanas: ${minWeekAvailable}–${maxWeekAvailable}`
+                                                    : ""
+                                            }
                                         />
                                     )}
                                     noOptionsText="Sin cursos"
@@ -269,22 +287,24 @@ export default function StudentNotesPage() {
                                             />
                                         </TableCell>
                                         <TableCell>
-                                            <Chip
-                                                size="small"
-                                                label={riskLabel(row.risk_score)}
-                                                color={riskColor(row.risk_score)}
-                                                variant="outlined"
-                                                sx={() => {
-                                                    const tone = riskTone(row.risk_score)
-                                                    return tone.border
-                                                        ? {
-                                                            borderColor: tone.border,
-                                                            color: tone.text,
-                                                            fontWeight: 700,
-                                                        }
-                                                        : { fontWeight: 700 }
-                                                }}
-                                            />
+                                            <Tooltip title={riskTooltip(row.risk_score)} placement="left" arrow>
+                                                <Chip
+                                                    size="small"
+                                                    label={riskLabel(row.risk_score)}
+                                                    color={riskColor(row.risk_score)}
+                                                    variant="outlined"
+                                                    sx={() => {
+                                                        const tone = riskTone(row.risk_score)
+                                                        return tone.border
+                                                            ? {
+                                                                borderColor: tone.border,
+                                                                color: tone.text,
+                                                                fontWeight: 700,
+                                                            }
+                                                            : { fontWeight: 700 }
+                                                    }}
+                                                />
+                                            </Tooltip>
                                         </TableCell>
                                         <TableCell>
                                             <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
