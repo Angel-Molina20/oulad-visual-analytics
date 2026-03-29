@@ -68,6 +68,7 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
     const [noteDialogMode, setNoteDialogMode] = useState<"review" | "edit">("review")
     const [noteDialogValue, setNoteDialogValue] = useState("")
     const [noteDialogAlert, setNoteDialogAlert] = useState<AlertRow | null>(null)
+    const [studentAlert, setStudentAlert] = useState<AlertRow | null>(null)
 
     useEffect(() => {
         if (!data?.course_id) return
@@ -156,10 +157,50 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
         closeNoteDialog()
     }
 
+    useEffect(() => {
+        const trimmed = studentFilter.trim()
+        if (!data?.course_id || !trimmed) {
+            setStudentAlert(null)
+            return
+        }
+        const userId = Number(trimmed)
+        if (!Number.isFinite(userId)) {
+            setStudentAlert(null)
+            return
+        }
+        let cancelled = false
+        const handle = setTimeout(() => {
+            apiGet<AlertsResponse>(
+                `/analytics/courses/${encodeURIComponent(courseId)}/alerts?week_id=${data.week_id}&top=1&user_id=${userId}`
+            )
+                .then((response) => {
+                    if (cancelled) return
+                    setStudentAlert(response.alerts[0] ?? null)
+                })
+                .catch(() => {
+                    if (cancelled) return
+                    setStudentAlert(null)
+                })
+        }, 300)
+        return () => {
+            cancelled = true
+            clearTimeout(handle)
+        }
+    }, [studentFilter, data?.course_id, data?.week_id, courseId])
+
     const filteredRows = useMemo(() => {
         if (!data) return []
 
-        const rows = data.alerts.filter((a) => {
+        const mergedAlerts = studentAlert
+            ? [
+                studentAlert,
+                ...data.alerts.filter(
+                    (a) => !(a.user_id === studentAlert.user_id && a.week_id === studentAlert.week_id)
+                ),
+            ]
+            : data.alerts
+
+        const rows = mergedAlerts.filter((a) => {
             const matchesStudent =
                 !studentFilter.trim() || String(a.user_id).includes(studentFilter.trim())
 
@@ -196,7 +237,7 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
         })
 
         return rows
-    }, [data, studentFilter, riskFilter, clusterFilter, statusFilter, feedbackMap])
+    }, [data, studentFilter, riskFilter, clusterFilter, statusFilter, feedbackMap, studentAlert])
 
     const paginatedRows = useMemo(() => {
         const start = page * rowsPerPage

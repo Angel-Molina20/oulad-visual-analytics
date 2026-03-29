@@ -22,7 +22,14 @@ export default function MetricCard({ label, value, helper }: Props) {
                         {label}
                     </Typography>
 
-                    <Typography variant="h3" sx={{ fontWeight: 700, lineHeight: 1 }}>
+                    <Typography
+                        variant="h4"
+                        sx={{
+                            fontWeight: 700,
+                            lineHeight: 1.1,
+                            fontSize: { xs: "1.6rem", sm: "1.8rem", md: "2rem" },
+                        }}
+                    >
                         {value}
                     </Typography>
 

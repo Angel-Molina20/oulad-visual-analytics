@@ -10,6 +10,7 @@ import {
     TableContainer,
     TableHead,
     TableRow,
+    TablePagination,
     Typography,
 } from "@mui/material"
 import SectionCard from "../components/ui/SectionCard"
@@ -24,7 +25,7 @@ import { useBaseline } from "../hooks/useBaseline"
 import type { TrajectoryResponse } from "../../../types/api"
 import {useState, useEffect, useRef} from "react";
 
-export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data: TrajectoryResponse | null, courseId: string, selectedWeek: number }) {
+export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data: TrajectoryResponse | null, courseId: string, selectedWeek: number | null }) {
     if (!data) return null
 
     const [baselineMode, setBaselineMode] = useState<"course" | "cluster">("course")
@@ -42,6 +43,8 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
     const clicks = data.trajectory.map((t) => t.clicks_total)
     const resources = data.trajectory.map((t) => t.resources_touched)
     const [analysisOpen, setAnalysisOpen] = useState(false)
+    const [page, setPage] = useState(0)
+    const [rowsPerPage, setRowsPerPage] = useState(10)
 
     const peakClicks = Math.max(...clicks)
     const peakWeek = data.trajectory.find((t) => t.clicks_total === peakClicks)?.week_id ?? "-"
@@ -90,6 +93,11 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
     const lastClicks = clicks[clicks.length - 1] ?? 0
     const clickChange =
         firstClicks > 0 ? (((lastClicks - firstClicks) / firstClicks) * 100).toFixed(1) : "0.0"
+
+    const paginatedRows = data.trajectory.slice(
+        page * rowsPerPage,
+        page * rowsPerPage + rowsPerPage
+    )
 
     return (
         <SectionCard
@@ -203,7 +211,7 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
                     </TableHead>
 
                     <TableBody>
-                        {data.trajectory.slice(0, 20).map((t) => {
+                        {paginatedRows.map((t) => {
                             const metaRow = getClusterMeta(t.cluster)
 
                             return (
@@ -243,6 +251,26 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
                         })}
                     </TableBody>
                 </Table>
+
+                <TablePagination
+                    component="div"
+                    count={data.trajectory.length}
+                    page={page}
+                    onPageChange={(_, newPage) => setPage(newPage)}
+                    rowsPerPage={rowsPerPage}
+                    onRowsPerPageChange={(e) => {
+                        setRowsPerPage(Number(e.target.value))
+                        setPage(0)
+                    }}
+                    rowsPerPageOptions={[5, 10, 20, 50]}
+                    labelRowsPerPage="Filas por página"
+                    sx={{
+                        ".MuiTablePagination-toolbar": {
+                            minHeight: 48,
+                            px: 0,
+                        },
+                    }}
+                />
             </TableContainer>
         </SectionCard>
     )

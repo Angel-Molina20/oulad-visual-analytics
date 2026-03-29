@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { Link as RouterLink, useParams , useLocation } from "react-router-dom"
+import { Link as RouterLink, useParams, useLocation, useNavigate } from "react-router-dom"
 import {
     Alert,
     Box,
@@ -7,7 +7,9 @@ import {
     Button,
     CircularProgress,
     Container,
+    MenuItem,
     Stack,
+    TextField,
     Typography,
 } from "@mui/material"
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded"
@@ -28,11 +30,30 @@ export default function StudentTrajectoryPage() {
     const traj = useTrajectory(courseId, canLoad ? numericUserId : 0)
 
     const location = useLocation()
+    const navigate = useNavigate()
     const selectedWeek = useMemo(() => {
         const sp = new URLSearchParams(location.search)
         const w = Number(sp.get("week"))
         return Number.isFinite(w) ? w : null
     }, [location.search])
+
+    const weekOptions = useMemo(() => {
+        const weeks = traj.data?.trajectory?.map((t) => t.week_id) ?? []
+        return Array.from(new Set(weeks)).sort((a, b) => a - b)
+    }, [traj.data])
+
+    const summary = useMemo(() => {
+        const rows = traj.data?.trajectory ?? []
+        if (!rows.length) return null
+        const first = rows[0]
+        const last = rows[rows.length - 1]
+        return {
+            totalWeeks: rows.length,
+            firstWeek: first.week_id,
+            lastWeek: last.week_id,
+            lastClicks: last.clicks_total,
+        }
+    }, [traj.data])
 
     const returnTo = useMemo(() => {
         const sp = new URLSearchParams(location.search)
@@ -99,18 +120,70 @@ export default function StudentTrajectoryPage() {
                                 <Typography variant="body1" color="text.secondary">
                                     Curso {courseId}, estudiante {numericUserId}
                                 </Typography>
+                                {summary && (
+                                    <Stack
+                                        direction={{ xs: "column", sm: "row" }}
+                                        spacing={1}
+                                        alignItems={{ xs: "flex-start", sm: "center" }}
+                                        sx={{ mt: 1 }}
+                                    >
+                                        <Typography variant="body2" color="text.secondary">
+                                            Semanas registradas: {summary.totalWeeks}
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Rango: {summary.firstWeek}–{summary.lastWeek}
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Última semana: {summary.lastWeek} · Clicks: {summary.lastClicks}
+                                        </Typography>
+                                    </Stack>
+                                )}
                             </Box>
 
-                            <Button
-                                component={RouterLink}
-                                to={returnTo}
-                                variant="outlined"
-                                startIcon={<ArrowBackRoundedIcon />}
-                            >
-                                Volver a {returnLabel}
-                            </Button>
+                            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center">
+                                <TextField
+                                    select
+                                    label="Semana destacada"
+                                    size="small"
+                                    value={selectedWeek === null ? "all" : String(selectedWeek)}
+                                    onChange={(e) => {
+                                        const sp = new URLSearchParams(location.search)
+                                        if (e.target.value === "all") {
+                                            sp.delete("week")
+                                        } else {
+                                            sp.set("week", e.target.value)
+                                        }
+                                        const nextSearch = sp.toString()
+                                        navigate(
+                                            {
+                                                pathname: location.pathname,
+                                                search: nextSearch ? `?${nextSearch}` : "",
+                                            },
+                                            { replace: true }
+                                        )
+                                    }}
+                                    sx={{ minWidth: 180 }}
+                                >
+                                    <MenuItem value="all">Todas</MenuItem>
+                                    {weekOptions.map((week) => (
+                                        <MenuItem key={week} value={String(week)}>
+                                            Semana {week}
+                                        </MenuItem>
+                                    ))}
+                                </TextField>
+
+                                <Button
+                                    component={RouterLink}
+                                    to={returnTo}
+                                    variant="outlined"
+                                    startIcon={<ArrowBackRoundedIcon />}
+                                >
+                                    Volver a {returnLabel}
+                                </Button>
+                            </Stack>
                         </Stack>
                     </Stack>
+
 
                     {!canLoad && (
                         <Alert severity="error">

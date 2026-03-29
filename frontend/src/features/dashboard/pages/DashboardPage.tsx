@@ -36,8 +36,6 @@ export default function DashboardPage() {
                 }}
             >
                 <Stack spacing={2.5}>
-                    <SummaryRow profiles={profiles.data} alerts={alerts.data} />
-
                     <FiltersBar
                         courses={courses}
                         courseId={courseId}
@@ -46,6 +44,8 @@ export default function DashboardPage() {
                         onWeekId={setWeekId}
                         maxWeek={40}
                     />
+
+                    <SummaryRow profiles={profiles.data} alerts={alerts.data} />
 
                     {error && <Alert severity="error">{error}</Alert>}
 

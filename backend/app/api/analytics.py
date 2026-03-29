@@ -61,7 +61,13 @@ def student_trajectory(user_id: int, course_id: str = Query(...)):
 
 
 @router.get("/courses/{course_id}/alerts")
-def alerts(course_id: str, week_id: int = Query(...), top: int = Query(20, ge=1, le=200), session: Session = Depends(get_session)):
+def alerts(
+    course_id: str,
+    week_id: int = Query(...),
+    top: int = Query(20, ge=1, le=200),
+    user_id: int | None = Query(default=None, ge=1),
+    session: Session = Depends(get_session),
+):
     df = load_mart()
     d = df[df["course_id"] == course_id].copy()
 
@@ -134,7 +140,18 @@ def alerts(course_id: str, week_id: int = Query(...), top: int = Query(20, ge=1,
 
     cur["reasons"] = cur.apply(reasons_row, axis=1)
 
-    cur = cur.sort_values("risk_score", ascending=False).head(top)
+    if user_id is not None:
+        cur = cur[cur["user_id"] == user_id].copy()
+        if cur.empty:
+            return {
+                "course_id": course_id,
+                "week_id": week_id,
+                "alerts": [],
+                "note": "user_id no encontrado",
+            }
+    else:
+        cur = cur.sort_values("risk_score", ascending=False).head(top)
+
     cur["p25_clicks"] = p25_clicks
     cur["p25_events"] = p25_events
     cur["p25_resources"] = p25_resources

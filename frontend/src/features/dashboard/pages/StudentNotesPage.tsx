@@ -84,6 +84,27 @@ export default function StudentNotesPage() {
         return "warning"
     }
 
+    const riskLabel = (risk: number | null) => {
+        if (risk === null || Number.isNaN(risk)) return "-"
+        if (risk >= 0.75) return `Alto · ${Math.round(risk * 100)}%`
+        if (risk >= 0.45) return `Medio · ${Math.round(risk * 100)}%`
+        return `Bajo · ${Math.round(risk * 100)}%`
+    }
+
+    const riskColor = (risk: number | null) => {
+        if (risk === null || Number.isNaN(risk)) return "default"
+        if (risk >= 0.75) return "error"
+        if (risk >= 0.45) return "warning"
+        return "success"
+    }
+
+    const riskTone = (risk: number | null) => {
+        if (risk === null || Number.isNaN(risk)) return { border: undefined, text: undefined }
+        if (risk >= 0.75) return { border: "#d32f2f", text: "#d32f2f" }
+        if (risk >= 0.45) return { border: "#f9a825", text: "#f9a825" }
+        return { border: "#2e7d32", text: "#2e7d32" }
+    }
+
     const rows = useMemo(() => {
         const query = studentQuery
         return notes.data.filter((row) => {
@@ -225,6 +246,7 @@ export default function StudentNotesPage() {
                                     <TableCell sx={{ fontWeight: 700, width: "14%" }}>Curso</TableCell>
                                     <TableCell sx={{ fontWeight: 700, width: "8%" }}>Semana</TableCell>
                                     <TableCell sx={{ fontWeight: 700, width: "12%" }}>Estado</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, width: "10%" }}>Riesgo</TableCell>
                                     <TableCell sx={{ fontWeight: 700 }}>Comentario</TableCell>
                                     <TableCell sx={{ fontWeight: 700, width: "16%" }}>Actualizado</TableCell>
                                     <TableCell align="center" sx={{ fontWeight: 700, width: "8%" }}>
@@ -244,6 +266,24 @@ export default function StudentNotesPage() {
                                                 label={statusLabel(row.status)}
                                                 color={statusColor(row.status)}
                                                 variant="outlined"
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Chip
+                                                size="small"
+                                                label={riskLabel(row.risk_score)}
+                                                color={riskColor(row.risk_score)}
+                                                variant="outlined"
+                                                sx={() => {
+                                                    const tone = riskTone(row.risk_score)
+                                                    return tone.border
+                                                        ? {
+                                                            borderColor: tone.border,
+                                                            color: tone.text,
+                                                            fontWeight: 700,
+                                                        }
+                                                        : { fontWeight: 700 }
+                                                }}
                                             />
                                         </TableCell>
                                         <TableCell>
