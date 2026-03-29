@@ -5,19 +5,45 @@ import {
     Stack,
     TextField,
     Typography,
+    ToggleButton,
+    ToggleButtonGroup,
 } from "@mui/material"
 
 type Props = {
     courses: string[]
     courseId: string
-    onCourseId: (v: string) => void
-    weekId: number
-    onWeekId: (v: number) => void
-    maxWeek: number
+    onCourseChange: (value: string) => void
+    weekMode: "week" | "range"
+    onWeekModeChange: (value: "week" | "range") => void
+    weeks: number[]
+    weekMin: number | null
+    weekMax: number | null
+    minWeekAvailable: number | null
+    maxWeekAvailable: number | null
+    onWeekMinChange: (value: number | null) => void
+    onWeekMaxChange: (value: number | null) => void
 }
 
 export default function FiltersBar(props: Props) {
-    const { courses, courseId, onCourseId, weekId, onWeekId, maxWeek } = props
+    const {
+        courses,
+        courseId,
+        onCourseChange,
+        weekMode,
+        onWeekModeChange,
+        weeks,
+        weekMin,
+        weekMax,
+        minWeekAvailable,
+        maxWeekAvailable,
+        onWeekMinChange,
+        onWeekMaxChange,
+    } = props
+
+    const minBound = minWeekAvailable ?? 0
+    const maxBound = maxWeekAvailable ?? 0
+    const rangeError = weekMode === "range" && weekMin !== null && weekMax !== null && weekMax < weekMin
+    const selectedWeek = weekMax ?? weekMin ?? minWeekAvailable ?? ""
 
     return (
         <Paper
@@ -30,19 +56,36 @@ export default function FiltersBar(props: Props) {
             }}
         >
             <Stack spacing={1.5}>
-                <Box>
-                    <Typography variant="subtitle1">Contexto de análisis</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        Define el curso y la semana que quieres revisar.
-                    </Typography>
-                </Box>
+                <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    alignItems={{ xs: "flex-start", sm: "center" }}
+                    justifyContent="space-between"
+                    spacing={1}
+                >
+                    <Box>
+                        <Typography variant="subtitle1">Contexto de análisis</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Define el curso y la semana que quieres revisar.
+                        </Typography>
+                    </Box>
+
+                    <ToggleButtonGroup
+                        size="small"
+                        exclusive
+                        value={weekMode}
+                        onChange={(_, value) => value && onWeekModeChange(value)}
+                    >
+                        <ToggleButton value="week">Semana</ToggleButton>
+                        <ToggleButton value="range">Rango</ToggleButton>
+                    </ToggleButtonGroup>
+                </Stack>
 
                 <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <TextField
                         select
                         label="Curso"
                         value={courseId}
-                        onChange={(e) => onCourseId(e.target.value)}
+                        onChange={(e) => onCourseChange(e.target.value)}
                         fullWidth
                     >
                         {courses.map((c) => (
@@ -52,14 +95,68 @@ export default function FiltersBar(props: Props) {
                         ))}
                     </TextField>
 
-                    <TextField
-                        label="Semana"
-                        type="number"
-                        inputProps={{ min: 0, max: maxWeek }}
-                        value={weekId}
-                        onChange={(e) => onWeekId(Number(e.target.value))}
-                        fullWidth
-                    />
+                    {weekMode === "week" ? (
+                        <TextField
+                            select={weeks.length > 0}
+                            label="Semana"
+                            type={weeks.length > 0 ? undefined : "number"}
+                            inputProps={{ min: minBound, max: maxBound }}
+                            value={selectedWeek}
+                            onChange={(e) => {
+                                const raw = e.target.value
+                                const next = raw === "" ? null : Number(raw)
+                                onWeekMinChange(next)
+                                onWeekMaxChange(next)
+                            }}
+                            fullWidth
+                        >
+                            {weeks.map((w) => (
+                                <MenuItem key={w} value={w}>
+                                    Semana {w}
+                                </MenuItem>
+                            ))}
+                        </TextField>
+                    ) : (
+                        <>
+                            <TextField
+                                label="Semana inicial"
+                                type="number"
+                                inputProps={{ min: minBound, max: maxBound }}
+                                value={weekMin ?? ""}
+                                onChange={(e) => {
+                                    const raw = e.target.value
+                                    onWeekMinChange(raw === "" ? null : Number(raw))
+                                }}
+                                helperText={
+                                    minWeekAvailable !== null && maxWeekAvailable !== null
+                                        ? `Rango disponible: ${minWeekAvailable}–${maxWeekAvailable}`
+                                        : ""
+                                }
+                                error={rangeError}
+                                fullWidth
+                            />
+
+                            <TextField
+                                label="Semana final"
+                                type="number"
+                                inputProps={{ min: minBound, max: maxBound }}
+                                value={weekMax ?? ""}
+                                onChange={(e) => {
+                                    const raw = e.target.value
+                                    onWeekMaxChange(raw === "" ? null : Number(raw))
+                                }}
+                                helperText={
+                                    rangeError
+                                        ? "La semana final no puede ser menor que la inicial."
+                                        : minWeekAvailable !== null && maxWeekAvailable !== null
+                                            ? `Rango disponible: ${minWeekAvailable}–${maxWeekAvailable}`
+                                            : ""
+                                }
+                                error={rangeError}
+                                fullWidth
+                            />
+                        </>
+                    )}
                 </Stack>
             </Stack>
         </Paper>

@@ -3,19 +3,22 @@ import DashboardPage from "./features/dashboard/pages/DashboardPage"
 import StudentTrajectoryPage from "./features/dashboard/pages/StudentTrajectoryPage"
 import ClustersPage from "./features/dashboard/pages/ClustersPage"
 import StudentNotesPage from "./features/dashboard/pages/StudentNotesPage"
+import { DashboardFiltersProvider } from "./features/dashboard/context/DashboardFiltersContext"
 
 export default function App() {
     return (
         <BrowserRouter>
-            <Routes>
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/clusters" element={<ClustersPage />} />
-                <Route path="/notes" element={<StudentNotesPage />} />
-                <Route
-                    path="/trajectory/:courseId/:userId"
-                    element={<StudentTrajectoryPage />}
-                />
-            </Routes>
+            <DashboardFiltersProvider>
+                <Routes>
+                    <Route path="/" element={<DashboardPage />} />
+                    <Route path="/clusters" element={<ClustersPage />} />
+                    <Route path="/notes" element={<StudentNotesPage />} />
+                    <Route
+                        path="/trajectory/:courseId/:userId"
+                        element={<StudentTrajectoryPage />}
+                    />
+                </Routes>
+            </DashboardFiltersProvider>
         </BrowserRouter>
     )
 }
