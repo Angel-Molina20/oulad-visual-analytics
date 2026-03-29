@@ -9,6 +9,8 @@ data/artifacts/
 data/processed/
 data/raw/
 
+documentation
+
 # Opcional: Ignorar cualquier archivo CSV o Parquet en el proyecto
 *.csv
 *.parquet
