@@ -33,6 +33,9 @@ export default function CohortsPanel({ data, metric, onMetric, weekMin, weekMax,
     const [draftMin, setDraftMin] = useState<number | null>(weekMin)
     const [draftMax, setDraftMax] = useState<number | null>(weekMax)
 
+    const isWeekMode = weekMin !== null && weekMax !== null && weekMin === weekMax
+    const selectedWeek = weekMin ?? weekMax
+
     // si cambian desde fuera, sincroniza
     useEffect(() => {
         setDraftMin(weekMin)
@@ -67,6 +70,46 @@ export default function CohortsPanel({ data, metric, onMetric, weekMin, weekMax,
         })
     }, [data, selectedCluster])
 
+    const barTrace = useMemo(() => {
+        if (!data?.series?.length || !isWeekMode || selectedWeek === null) return []
+        const points = data.series
+            .filter((p) => p.week_id === selectedWeek)
+            .sort((a, b) => a.cluster - b.cluster)
+
+        if (!points.length) return []
+
+        const labels = points.map((p) => getClusterMeta(p.cluster).code)
+        const colors = points.map((p) => {
+            const tone = getClusterMeta(p.cluster).tone
+            if (tone === "success") return "#2e7d32"
+            if (tone === "warning") return "#f9a825"
+            if (tone === "error") return "#d32f2f"
+            return "#64748b"
+        })
+        const opacities = points.map((p) =>
+            selectedCluster === null || selectedCluster === p.cluster ? 1 : 0.3
+        )
+
+        return [
+            {
+                type: "bar",
+                x: labels,
+                y: points.map((p) => p.value),
+                marker: {
+                    color: colors,
+                    opacity: opacities,
+                },
+                hovertemplate: `Cluster %{x}<br>Valor: %{y:.2f}<extra></extra>`,
+            } as any,
+        ]
+    }, [data, isWeekMode, selectedWeek, selectedCluster])
+
+    const subtitle = isWeekMode && selectedWeek !== null
+        ? `Comparación por cluster en la semana ${selectedWeek}.`
+        : "Promedio semanal por perfil. Ajusta el rango y presiona Aplicar."
+
+    const plotData = isWeekMode ? barTrace : traces
+
     return (
         <Card variant="outlined">
             <CardContent>
@@ -82,7 +125,7 @@ export default function CohortsPanel({ data, metric, onMetric, weekMin, weekMax,
                             Cohortes por semana
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                            Promedio semanal por perfil. Ajusta el rango y presiona Aplicar.
+                            {subtitle}
                         </Typography>
                     </div>
 
@@ -132,11 +175,12 @@ export default function CohortsPanel({ data, metric, onMetric, weekMin, weekMax,
                 </Stack>
 
                 <Plot
-                    data={traces}
+                    data={plotData}
                     layout={{
                         height: 320,
                         margin: { l: 50, r: 10, t: 10, b: 40 },
-                        legend: { orientation: "h", y: -0.25 },
+                        legend: isWeekMode ? undefined : { orientation: "h", y: -0.25 },
+                        barmode: isWeekMode ? "group" : undefined,
                     }}
                     style={{ width: "100%" }}
                     config={{ responsive: true, displayModeBar: false }}

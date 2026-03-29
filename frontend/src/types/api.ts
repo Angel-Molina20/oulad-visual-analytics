@@ -1,5 +1,13 @@
 export type CoursesResponse = { courses: string[]; count: number }
 
+export type WeeksResponse = {
+    course_id: string
+    week_min: number
+    week_max: number
+    weeks: number[]
+    note?: string
+}
+
 export type ProfileCount = { cluster: number; students: number }
 export type OutcomeCount = { cluster: number; final_result: string; students: number }
 

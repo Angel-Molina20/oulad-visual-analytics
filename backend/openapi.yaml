@@ -105,6 +105,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TrajectoryResponse"
+  /analytics/courses/{course_id}/weeks:
+    get:
+      tags: [analytics]
+      summary: Semanas disponibles por curso
+      description: Devuelve el rango y la lista de semanas disponibles para un curso.
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeeksResponse"
   /analytics/courses/{course_id}/alerts:
     get:
       tags: [analytics]
@@ -129,6 +147,12 @@ paths:
             type: integer
             minimum: 1
             maximum: 200
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
       responses:
         "200":
           description: OK
@@ -371,6 +395,22 @@ components:
         count:
           type: integer
       required: [courses, count]
+    WeeksResponse:
+      type: object
+      properties:
+        course_id:
+          type: string
+        week_min:
+          type: integer
+        week_max:
+          type: integer
+        weeks:
+          type: array
+          items:
+            type: integer
+        note:
+          type: string
+      required: [course_id, week_min, week_max, weeks]
     AlertFeedbackInput:
       type: object
       properties:

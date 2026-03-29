@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react"
 import {
     Alert,
     Container,
@@ -7,24 +6,36 @@ import {
 import AppShell from "../components/layout/AppShell"
 import AlertsPanel from "../components/AlertsPanel"
 import SummaryRow from "../components/SummaryRow"
-import { useCourses } from "../hooks/useCourses"
-import { useProfiles } from "../hooks/useProfiles"
 import { useAlerts } from "../hooks/useAlerts"
+import { useAlertsRangeSummary } from "../hooks/useAlertsRangeSummary"
 import FiltersBar from "../components/FiltersBar"
+import { useDashboardFilters } from "../context/DashboardFiltersContext"
 
 export default function DashboardPage() {
-    const { courses, error: errorCourses } = useCourses()
-    const [courseId, setCourseId] = useState("")
-    const [weekId, setWeekId] = useState(0)
+    const {
+        courses,
+        coursesError,
+        courseId,
+        setCourseId,
+        weekMode,
+        setWeekMode,
+        weeks,
+        weekMin,
+        weekMax,
+        setWeekMin,
+        setWeekMax,
+        minWeekAvailable,
+        maxWeekAvailable,
+    } = useDashboardFilters()
 
-    useEffect(() => {
-        if (!courseId && courses.length) setCourseId(courses[0])
-    }, [courses, courseId])
+    const resolvedWeekMin = weekMin ?? minWeekAvailable
+    const resolvedWeekMax = weekMax ?? maxWeekAvailable
+    const alertWeek = resolvedWeekMax ?? resolvedWeekMin ?? 0
 
-    const profiles = useProfiles(courseId)
-    const alerts = useAlerts(courseId, weekId, 50)
+    const alerts = useAlerts(courseId, alertWeek, 50)
+    const rangeSummary = useAlertsRangeSummary(courseId, resolvedWeekMin ?? null, resolvedWeekMax ?? null, 50)
 
-    const error = errorCourses || profiles.error || alerts.error
+    const error = coursesError || alerts.error || rangeSummary.error
 
     return (
         <AppShell>
@@ -39,13 +50,19 @@ export default function DashboardPage() {
                     <FiltersBar
                         courses={courses}
                         courseId={courseId}
-                        onCourseId={setCourseId}
-                        weekId={weekId}
-                        onWeekId={setWeekId}
-                        maxWeek={40}
+                        onCourseChange={setCourseId}
+                        weekMode={weekMode}
+                        onWeekModeChange={setWeekMode}
+                        weeks={weeks}
+                        weekMin={weekMin}
+                        weekMax={weekMax}
+                        minWeekAvailable={minWeekAvailable}
+                        maxWeekAvailable={maxWeekAvailable}
+                        onWeekMinChange={setWeekMin}
+                        onWeekMaxChange={setWeekMax}
                     />
 
-                    <SummaryRow profiles={profiles.data} alerts={alerts.data} />
+                    <SummaryRow summary={rangeSummary.data} />
 
                     {error && <Alert severity="error">{error}</Alert>}
 

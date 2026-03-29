@@ -314,3 +314,35 @@ def cluster_outcomes(course_id: str):
     merged["rate"] = (merged["students"] / merged["total_students"]).round(4)
 
     return {"course_id": course_id, "clusters": merged.to_dict(orient="records")}
+
+@router.get("/courses/{course_id}/weeks")
+def course_weeks(course_id: str):
+    df = load_mart()
+    d = df[df["course_id"] == course_id].copy()
+
+    if d.empty:
+        return {
+            "course_id": course_id,
+            "week_min": 0,
+            "week_max": 0,
+            "weeks": [],
+            "note": "course_id no encontrado",
+        }
+
+    d = d[d["week_id"] >= 0]
+    if d.empty:
+        return {
+            "course_id": course_id,
+            "week_min": 0,
+            "week_max": 0,
+            "weeks": [],
+            "note": "sin datos de semanas",
+        }
+
+    weeks = sorted(d["week_id"].unique().tolist())
+    return {
+        "course_id": course_id,
+        "week_min": int(weeks[0]),
+        "week_max": int(weeks[-1]),
+        "weeks": [int(w) for w in weeks],
+    }
