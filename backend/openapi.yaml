@@ -573,6 +573,16 @@ components:
           type: number
         events_count:
           type: number
+        assessment_events:
+          type: number
+        has_submission_week:
+          type: integer
+        weeks_active_ratio:
+          type: number
+        clicks_delta_prev_week:
+          type: number
+        resource_diversity_delta:
+          type: number
         cluster:
           type: integer
         final_result:
@@ -611,6 +621,16 @@ components:
         resources_touched:
           type: number
         events_count:
+          type: number
+        assessment_events:
+          type: number
+        has_submission_week:
+          type: integer
+        weeks_active_ratio:
+          type: number
+        clicks_delta_prev_week:
+          type: number
+        resource_diversity_delta:
           type: number
         cluster:
           type: integer

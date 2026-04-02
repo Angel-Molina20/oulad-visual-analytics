@@ -39,7 +39,20 @@ def main():
     df = pd.read_parquet(weekly_path)
     print("Job 04 | filas:", len(df))
 
-    features = ["clicks_total", "resources_touched", "resource_types_touched", "events_count"]
+    features = [
+        "clicks_total",
+        "resources_touched",
+        "resource_types_touched",
+        "events_count",
+        "assessment_events",
+        "has_submission_week",
+        "weeks_active_ratio",
+        "clicks_delta_prev_week",
+        "resource_diversity_delta",
+    ]
+    for col in features:
+        if col not in df.columns:
+            df[col] = 0
     X = df[features].fillna(0).astype("float64")
 
     print("Job 04 | escalando features:", features)

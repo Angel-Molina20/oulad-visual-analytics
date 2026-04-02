@@ -22,7 +22,21 @@ def main():
     # Limpieza mínima
     df = df[df["week_id"] >= 0].copy()
 
-    feats = ["clicks_total", "resources_touched", "resource_types_touched", "events_count"]
+    feats = [
+        "clicks_total",
+        "resources_touched",
+        "resource_types_touched",
+        "events_count",
+        "assessment_events",
+        "has_submission_week",
+        "weeks_active_ratio",
+        "clicks_delta_prev_week",
+        "resource_diversity_delta",
+    ]
+
+    for col in feats:
+        if col not in df.columns:
+            df[col] = 0
 
     # 1) Estadísticos globales por cluster sobre semanas
     stats = (
@@ -143,11 +157,21 @@ def main():
         resource_types_mean = float(row["resource_types_touched_mean"])
         clicks_std_mean = float(row["clicks_std_mean"]) if pd.notna(row["clicks_std_mean"]) else 0.0
         trend_ratio = float(trend_map.get(c, 0.0))
+        assessment_mean = float(row.get("assessment_events_mean", 0.0))
+        submission_rate = float(row.get("has_submission_week_mean", 0.0))
+        regularity_mean = float(row.get("weeks_active_ratio_mean", 0.0))
+        delta_clicks_mean = float(row.get("clicks_delta_prev_week_mean", 0.0))
+        delta_diversity_mean = float(row.get("resource_diversity_delta_mean", 0.0))
 
         reasons = [
             f"Clicks promedio/semana: {clicks_mean:.1f}",
             f"Diversidad de recursos/semana: {resource_types_mean:.1f}",
             f"Variación semanal (σ clicks): {clicks_std_mean:.1f}",
+            f"Regularidad semanal: {regularity_mean*100:.0f}%",
+            f"Entregas promedio/semana: {assessment_mean:.2f}",
+            f"Semanas con entrega: {submission_rate*100:.0f}%",
+            f"Tendencia clicks: {delta_clicks_mean:+.1f}",
+            f"Tendencia diversidad: {delta_diversity_mean:+.1f}",
             f"Resultado dominante: {top_outcome} ({outcome_rates[top_outcome]*100:.1f}%)",
         ]
 
@@ -162,6 +186,11 @@ def main():
                 "resources_mean": resources_mean,
                 "resource_types_mean": resource_types_mean,
                 "events_mean": float(row["events_count_mean"]),
+                "assessment_events_mean": assessment_mean,
+                "has_submission_week_rate": submission_rate,
+                "weeks_active_ratio_mean": regularity_mean,
+                "clicks_delta_prev_week_mean": delta_clicks_mean,
+                "resource_diversity_delta_mean": delta_diversity_mean,
                 "clicks_std_mean": clicks_std_mean,
                 "trend_ratio": trend_ratio,
                 "rate_pass": rate_pass,
