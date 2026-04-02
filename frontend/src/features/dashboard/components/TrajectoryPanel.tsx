@@ -12,6 +12,7 @@ import {
     TableRow,
     TablePagination,
     Typography,
+    Tooltip,
 } from "@mui/material"
 import SectionCard from "../components/ui/SectionCard"
 import InsightCard from "../components/ui/InsightCard"
@@ -23,7 +24,7 @@ import { getClusterMeta } from "../utils/clusterMeta"
 import { ToggleButton, ToggleButtonGroup } from "@mui/material"
 import { useBaseline } from "../hooks/useBaseline"
 import type { TrajectoryResponse } from "../../../types/api"
-import {useState, useEffect, useRef} from "react";
+import { useMemo, useState, useEffect, useRef } from "react"
 
 export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data: TrajectoryResponse | null, courseId: string, selectedWeek: number | null }) {
     if (!data) return null
@@ -34,6 +35,7 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
         data?.trajectory?.length ? data.trajectory[data.trajectory.length - 1].cluster : null
 
     const baseline = useBaseline(courseId, baselineMode === "course" ? null : studentCluster)
+    const courseBaseline = useBaseline(courseId, null)
 
     const bWeeks = baseline.data?.baseline?.map((b) => b.week_id) ?? []
     const bClicks = baseline.data?.baseline?.map((b) => b.clicks_mean) ?? []
@@ -57,6 +59,57 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
     }, {})
 
     const rowRefs = useRef<Record<number, HTMLTableRowElement | null>>({})
+
+    const courseBaselineMap = courseBaseline.byWeek
+    const courseBaselineRows = courseBaseline.data?.baseline ?? []
+
+    const alertDetails = useMemo(() => {
+        const details = new Map<number, string[]>()
+        data.trajectory.forEach((t, index) => {
+            const reasons: string[] = []
+            const baselineRow = courseBaselineMap.get(t.week_id)
+            if (baselineRow) {
+                if (t.clicks_total <= baselineRow.clicks_mean * 0.6) {
+                    reasons.push("Clicks muy bajos vs promedio del curso")
+                }
+                if (t.resources_touched <= baselineRow.resources_mean * 0.6) {
+                    reasons.push("Recursos por debajo del promedio del curso")
+                }
+            }
+            if (index > 0) {
+                const prev = data.trajectory[index - 1]
+                if (prev.clicks_total > 0) {
+                    const drop = (prev.clicks_total - t.clicks_total) / prev.clicks_total
+                    if (drop >= 0.35) {
+                        reasons.push(`Caída de actividad ${Math.round(drop * 100)}% vs semana anterior`)
+                    }
+                }
+            }
+            if (reasons.length) details.set(t.week_id, reasons)
+        })
+        return details
+    }, [data.trajectory, courseBaselineMap])
+
+    const alertWeeks = useMemo(() => Array.from(alertDetails.keys()).sort((a, b) => a - b), [alertDetails])
+    const alertClicks = alertWeeks.map((week) => {
+        const row = data.trajectory.find((t) => t.week_id === week)
+        return row?.clicks_total ?? 0
+    })
+
+    const clusterChangeWeeks = useMemo(() => {
+        const changes = new Set<number>()
+        for (let i = 1; i < data.trajectory.length; i += 1) {
+            const prev = data.trajectory[i - 1]
+            const cur = data.trajectory[i]
+            if (prev.cluster !== cur.cluster) changes.add(cur.week_id)
+        }
+        return Array.from(changes).sort((a, b) => a - b)
+    }, [data.trajectory])
+
+    const changeClicks = clusterChangeWeeks.map((week) => {
+        const row = data.trajectory.find((t) => t.week_id === week)
+        return row?.clicks_total ?? 0
+    })
 
     useEffect(() => {
         if (selectedWeek === null) return
@@ -98,6 +151,39 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
         page * rowsPerPage,
         page * rowsPerPage + rowsPerPage
     )
+
+    const avgCourseResources = courseBaselineRows.length
+        ? courseBaselineRows.reduce((acc, row) => acc + row.resources_mean, 0) / courseBaselineRows.length
+        : 0
+    const avgStudentResources = resources.length
+        ? resources.reduce((acc, val) => acc + val, 0) / resources.length
+        : 0
+
+    const narrativeLines = useMemo(() => {
+        const lines: string[] = []
+        if (!data.trajectory.length) return lines
+        const firstWeek = data.trajectory[0].week_id
+        const firstAlertWeek = alertWeeks[0]
+        if (firstAlertWeek !== undefined && firstAlertWeek > firstWeek) {
+            lines.push(`Actividad estable hasta semana ${firstAlertWeek - 1}.`)
+            lines.push(`Caída marcada desde semana ${firstAlertWeek}.`)
+        }
+        if (avgCourseResources > 0 && avgStudentResources / avgCourseResources < 0.7) {
+            lines.push("Uso de recursos por debajo del promedio del curso.")
+        }
+        if (clusterChangeWeeks.length > 0) {
+            lines.push(`Cambios de cluster en semanas ${clusterChangeWeeks.join(", ")}.`)
+        }
+        const lastCluster = data.trajectory[data.trajectory.length - 1]?.cluster
+        if (lastCluster !== undefined) {
+            const meta = getClusterMeta(lastCluster)
+            lines.push(`Perfil final: ${meta.label}.`)
+        }
+        if (!lines.length) {
+            lines.push("Trayectoria estable sin señales críticas destacadas.")
+        }
+        return lines
+    }, [data.trajectory, alertWeeks, avgCourseResources, avgStudentResources, clusterChangeWeeks])
 
     return (
         <SectionCard
@@ -168,6 +254,15 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
                 recommendations={trajectoryRecommendations}
             />
 
+            <Stack spacing={0.5} sx={{ mb: 1 }}>
+                <Typography variant="subtitle2">Lectura breve del caso</Typography>
+                {narrativeLines.map((line) => (
+                    <Typography key={line} variant="body2" color="text.secondary">
+                        {line}
+                    </Typography>
+                ))}
+            </Stack>
+
             <Plot
                 data={[
                     { type: "scatter", mode: "lines+markers", name: "Clicks (estudiante)", x: weeks, y: clicks },
@@ -186,6 +281,22 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
                         x: bWeeks,
                         y: bResources,
                     },
+                    {
+                        type: "scatter",
+                        mode: "markers",
+                        name: "Semanas con alerta",
+                        x: alertWeeks,
+                        y: alertClicks,
+                        marker: { color: "#d32f2f", size: 10, symbol: "triangle-up" },
+                    },
+                    {
+                        type: "scatter",
+                        mode: "markers",
+                        name: "Cambio de cluster",
+                        x: clusterChangeWeeks,
+                        y: changeClicks,
+                        marker: { color: "#f9a825", size: 9, symbol: "diamond" },
+                    },
                 ]}
                 layout={{
                     height: 340,
@@ -203,16 +314,25 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
                         <TableRow>
                             <TableCell align="right">Semana</TableCell>
                             <TableCell align="right">Clicks</TableCell>
+                            <TableCell align="right">Δ vs curso</TableCell>
                             <TableCell align="right">Recursos</TableCell>
                             <TableCell align="right">Tipos</TableCell>
                             <TableCell align="right">Eventos</TableCell>
                             <TableCell align="right">Cluster</TableCell>
+                            <TableCell align="center">Señal</TableCell>
+                            <TableCell align="center">Cambio</TableCell>
                         </TableRow>
                     </TableHead>
 
                     <TableBody>
                         {paginatedRows.map((t) => {
                             const metaRow = getClusterMeta(t.cluster)
+                            const baselineRow = courseBaselineMap.get(t.week_id)
+                            const deltaClicks = baselineRow ? t.clicks_total - baselineRow.clicks_mean : null
+                            const deltaResources = baselineRow ? t.resources_touched - baselineRow.resources_mean : null
+                            const alertReasons = alertDetails.get(t.week_id)
+                            const hasAlert = Boolean(alertReasons?.length)
+                            const hasChange = clusterChangeWeeks.includes(t.week_id)
 
                             return (
                                 <TableRow
@@ -222,11 +342,25 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
                                         rowRefs.current[t.week_id] = el
                                     }}
                                     sx={{
-                                        backgroundColor: selectedWeek === t.week_id ? "rgba(25, 118, 210, 0.08)" : undefined,
+                                        backgroundColor: selectedWeek === t.week_id
+                                            ? "rgba(25, 118, 210, 0.08)"
+                                            : hasAlert
+                                                ? "rgba(211, 47, 47, 0.06)"
+                                                : undefined,
                                     }}
                                 >
                                     <TableCell align="right">{t.week_id}</TableCell>
                                     <TableCell align="right">{t.clicks_total}</TableCell>
+                                    <TableCell align="right">
+                                        <Typography variant="caption" color="text.secondary">
+                                            {deltaClicks === null
+                                                ? "-"
+                                                : `${deltaClicks >= 0 ? "+" : ""}${Math.round(deltaClicks)}`}
+                                            {deltaResources === null
+                                                ? ""
+                                                : ` / ${deltaResources >= 0 ? "+" : ""}${Math.round(deltaResources)} recursos`}
+                                        </Typography>
+                                    </TableCell>
                                     <TableCell align="right">{t.resources_touched}</TableCell>
                                     <TableCell align="right">{t.resource_types_touched}</TableCell>
                                     <TableCell align="right">{t.events_count}</TableCell>
@@ -245,6 +379,22 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
                                             }
                                             variant="outlined"
                                         />
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        {hasAlert ? (
+                                            <Tooltip title={alertReasons?.join(" · ") ?? ""}>
+                                                <Chip size="small" color="error" label="Alerta" variant="outlined" />
+                                            </Tooltip>
+                                        ) : (
+                                            <Typography variant="caption" color="text.secondary">-</Typography>
+                                        )}
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        {hasChange ? (
+                                            <Chip size="small" color="warning" label="Cambio" variant="outlined" />
+                                        ) : (
+                                            <Typography variant="caption" color="text.secondary">-</Typography>
+                                        )}
                                     </TableCell>
                                 </TableRow>
                             )

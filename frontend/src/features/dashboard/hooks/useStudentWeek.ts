@@ -8,7 +8,7 @@ export function useStudentWeek(courseId: string) {
     const [error, setError] = useState("")
 
     async function search(weekId: number, userId: number) {
-        if (!courseId || !weekId || !userId) return
+        if (!courseId || weekId === null || weekId === undefined || !userId) return
         setLoading(true)
         setError("")
         try {
