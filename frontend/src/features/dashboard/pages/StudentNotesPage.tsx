@@ -24,6 +24,7 @@ import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded"
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded"
 import AppShell from "../components/layout/AppShell"
 import { useStudentNotes } from "../hooks/useStudentNotes"
+import { useWeeks } from "../hooks/useWeeks"
 import { apiPost } from "../../../api/client"
 import type { AlertFeedback } from "../../../types/api"
 import { useNavigate, useLocation } from "react-router-dom"
@@ -46,18 +47,14 @@ type NoteRow = {
 export default function StudentNotesPage() {
     const navigate = useNavigate()
     const location = useLocation()
-    const {
-        courses,
-        coursesError,
-        courseId,
-        setCourseId,
-        minWeekAvailable,
-        maxWeekAvailable,
-    } = useDashboardFilters()
+    const { courses, coursesError } = useDashboardFilters()
+    const [notesCourseId, setNotesCourseId] = useState("")
     const [studentFilter, setStudentFilter] = useState("")
     const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all")
     const [page, setPage] = useState(0)
     const [rowsPerPage, setRowsPerPage] = useState(10)
+
+    const notesWeeks = useWeeks(notesCourseId)
 
     const courseOptions = useMemo(
         () => [
@@ -68,13 +65,13 @@ export default function StudentNotesPage() {
     )
 
     const selectedCourse = useMemo(() => {
-        return courseOptions.find((opt) => opt.value === courseId) ?? courseOptions[0]
-    }, [courseOptions, courseId])
+        return courseOptions.find((opt) => opt.value === notesCourseId) ?? courseOptions[0]
+    }, [courseOptions, notesCourseId])
 
     const studentQuery = useMemo(() => studentFilter.trim(), [studentFilter])
 
     const notes = useStudentNotes({
-        courseId: courseId || undefined,
+        courseId: notesCourseId || undefined,
         status: statusFilter === "all" ? undefined : statusFilter,
     })
 
@@ -193,7 +190,7 @@ export default function StudentNotesPage() {
                                     isOptionEqualToValue={(option, value) => option.value === value.value}
                                     getOptionLabel={(option) => option.label}
                                     onChange={(_, value) => {
-                                        setCourseId(value?.value ?? "")
+                                        setNotesCourseId(value?.value ?? "")
                                         setPage(0)
                                     }}
                                     renderInput={(params) => (
@@ -204,8 +201,10 @@ export default function StudentNotesPage() {
                                             sx={filterFieldSx}
                                             fullWidth
                                             helperText={
-                                                minWeekAvailable !== null && maxWeekAvailable !== null
-                                                    ? `Rango semanas: ${minWeekAvailable}–${maxWeekAvailable}`
+                                                notesCourseId &&
+                                                notesWeeks.data?.week_min !== undefined &&
+                                                notesWeeks.data?.week_max !== undefined
+                                                    ? `Rango semanas: ${notesWeeks.data.week_min}–${notesWeeks.data.week_max}`
                                                     : ""
                                             }
                                         />

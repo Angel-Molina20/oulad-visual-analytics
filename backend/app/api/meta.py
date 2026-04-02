@@ -13,7 +13,7 @@ def cluster_labels(course_id: str | None = Query(default=None)):
     artifacts_dir = Path(os.getenv("ARTIFACTS_DIR", "/data/artifacts")) / "clustering"
     path = artifacts_dir / "cluster_labels.json"
     if not path.exists():
-        return {"clusters": [], "note": "No existe cluster_labels.json. Ejecuta job 06."}
+        return {"clusters": [], "note": "No existe cluster_labels.json. Ejecuta job 07."}
 
     base_labels = json.loads(path.read_text(encoding="utf-8"))
 
@@ -46,13 +46,14 @@ def cluster_labels(course_id: str | None = Query(default=None)):
         return float(n) / float(t)
 
     # Métricas de actividad por cluster dentro del curso
-    feats = ["clicks_total", "resources_touched", "events_count"]
+    feats = ["clicks_total", "resources_touched", "resource_types_touched", "events_count"]
     act = d.groupby("cluster")[feats].mean().reset_index()
 
     act_map = {
         int(r["cluster"]): {
             "clicks_mean": float(r["clicks_total"]),
             "resources_mean": float(r["resources_touched"]),
+            "resource_types_mean": float(r["resource_types_touched"]),
             "events_mean": float(r["events_count"]),
         }
         for _, r in act.iterrows()
@@ -70,6 +71,7 @@ def cluster_labels(course_id: str | None = Query(default=None)):
                 "clicks_mean_course": act_map.get(c, {}).get("clicks_mean", 0.0),
                 "resources_mean_course": act_map.get(c, {}).get("resources_mean", 0.0),
                 "events_mean_course": act_map.get(c, {}).get("events_mean", 0.0),
+                "resource_types_mean_course": act_map.get(c, {}).get("resource_types_mean", 0.0),
                 "rate_pass_course": rate(c, "Pass"),
                 "rate_fail_course": rate(c, "Fail"),
                 "rate_withdrawn_course": rate(c, "Withdrawn"),

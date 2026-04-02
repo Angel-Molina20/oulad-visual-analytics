@@ -13,16 +13,30 @@ def main():
     artifacts_dir = Path(os.getenv("ARTIFACTS_DIR", "/data/artifacts")) / "clustering"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
 
-    mart_path = processed_dir / "mart.parquet"
+    mart_path = processed_dir / "mart_clean.parquet"
     if not mart_path.exists():
-        raise SystemExit("No existe mart.parquet. Ejecuta job 05.")
+        raise SystemExit("No existe mart_clean.parquet. Ejecuta job 06.")
 
     df = pd.read_parquet(mart_path)
 
     # Limpieza mínima
     df = df[df["week_id"] >= 0].copy()
 
-    feats = ["clicks_total", "resources_touched", "resource_types_touched", "events_count"]
+    feats = [
+        "clicks_total",
+        "resources_touched",
+        "resource_types_touched",
+        "events_count",
+        "assessment_events",
+        "has_submission_week",
+        "weeks_active_ratio",
+        "clicks_delta_prev_week",
+        "resource_diversity_delta",
+    ]
+
+    for col in feats:
+        if col not in df.columns:
+            df[col] = 0
 
     # 1) Estadísticos globales por cluster sobre semanas
     stats = (
@@ -62,6 +76,24 @@ def main():
     )
     stab_by_cluster = stability.groupby("cluster")["clicks_std"].mean().reset_index(name="clicks_std_mean")
 
+    # 3.1) Tendencia reciente por cluster (comparando últimas 3 semanas vs 3 previas)
+    weekly = (
+        df.groupby(["cluster", "week_id"], as_index=False)
+        .agg(clicks_mean=("clicks_total", "mean"))
+        .sort_values(["cluster", "week_id"])
+    )
+
+    trend_map = {}
+    for c, g in weekly.groupby("cluster"):
+        g = g.sort_values("week_id")
+        if len(g) >= 4:
+            tail = g.tail(3)["clicks_mean"].mean()
+            prev = g.iloc[:-3].tail(3)["clicks_mean"].mean()
+        else:
+            tail = g["clicks_mean"].mean()
+            prev = g["clicks_mean"].mean()
+        trend_map[int(c)] = safe_div(tail - prev, prev) if prev else 0.0
+
     # Merge todo
     merged = stats.merge(totals, on="cluster", how="left").merge(stab_by_cluster, on="cluster", how="left")
 
@@ -71,38 +103,36 @@ def main():
         return float(r["rate"].iloc[0]) if len(r) else 0.0
 
     # 4) Etiquetado automático por ranking
-    # alta participación: mayor clicks_total_mean
     ranked = merged.sort_values("clicks_total_mean", ascending=False).copy()
     clusters_sorted = ranked["cluster"].tolist()
 
     labels = {}
-    if len(clusters_sorted) >= 3:
-        high = clusters_sorted[0]
-        mid = clusters_sorted[1]
-        low = clusters_sorted[2]
-    else:
-        high = clusters_sorted[0]
-        mid = clusters_sorted[1] if len(clusters_sorted) > 1 else clusters_sorted[0]
-        low = clusters_sorted[-1]
+    high = clusters_sorted[0]
+    low = clusters_sorted[-1]
 
     # Inestabilidad: mayor clicks_std_mean
     unstable = merged.sort_values("clicks_std_mean", ascending=False)["cluster"].iloc[0]
 
+    # Caída reciente: tendencia más negativa (si es relevante)
+    drop_candidates = [c for c, t in trend_map.items() if t <= -0.15]
+    drop_cluster = min(drop_candidates, key=lambda c: trend_map[c]) if drop_candidates else None
+
     for c in merged["cluster"].tolist():
         if c == high:
-            title = "Alta participación"
-            desc = "Mayor actividad semanal y mayor intensidad de interacción."
+            title = "Alta participación sostenida"
+            desc = "Mayor actividad semanal con estabilidad en el tiempo."
         elif c == low:
-            title = "Baja participación"
-            desc = "Menor actividad semanal y menor diversidad de recursos."
+            title = "Baja participación persistente"
+            desc = "Menor actividad semanal y poca diversidad de recursos."
+        elif drop_cluster is not None and c == drop_cluster:
+            title = "Caída reciente de actividad"
+            desc = "Descenso en la actividad en las últimas semanas del curso."
+        elif c == unstable:
+            title = "Participación intermitente"
+            desc = "Alta variación semanal; la actividad sube y baja con frecuencia."
         else:
-            title = "Participación media"
-            desc = "Actividad intermedia y patrones mixtos."
-
-        # Si coincide con el más inestable, ajusta el título solo si no es high
-        if c == unstable and c != high:
-            title = "Participación irregular"
-            desc = "Mayor variación semanal de actividad, requiere seguimiento."
+            title = "Participación intermedia"
+            desc = "Actividad moderada con patrones mixtos."
 
         labels[int(c)] = {"title": title, "description": desc}
 
@@ -110,27 +140,70 @@ def main():
     result = []
     for _, row in merged.iterrows():
         c = int(row["cluster"])
+        rate_pass = get_rate(c, "Pass")
+        rate_fail = get_rate(c, "Fail")
+        rate_withdrawn = get_rate(c, "Withdrawn")
+        rate_distinction = get_rate(c, "Distinction")
+        outcome_rates = {
+            "Pass": rate_pass,
+            "Fail": rate_fail,
+            "Withdrawn": rate_withdrawn,
+            "Distinction": rate_distinction,
+        }
+        top_outcome = max(outcome_rates, key=outcome_rates.get)
+
+        clicks_mean = float(row["clicks_total_mean"])
+        resources_mean = float(row["resources_touched_mean"])
+        resource_types_mean = float(row["resource_types_touched_mean"])
+        clicks_std_mean = float(row["clicks_std_mean"]) if pd.notna(row["clicks_std_mean"]) else 0.0
+        trend_ratio = float(trend_map.get(c, 0.0))
+        assessment_mean = float(row.get("assessment_events_mean", 0.0))
+        submission_rate = float(row.get("has_submission_week_mean", 0.0))
+        regularity_mean = float(row.get("weeks_active_ratio_mean", 0.0))
+        delta_clicks_mean = float(row.get("clicks_delta_prev_week_mean", 0.0))
+        delta_diversity_mean = float(row.get("resource_diversity_delta_mean", 0.0))
+
+        reasons = [
+            f"Clicks promedio/semana: {clicks_mean:.1f}",
+            f"Diversidad de recursos/semana: {resource_types_mean:.1f}",
+            f"Variación semanal (σ clicks): {clicks_std_mean:.1f}",
+            f"Regularidad semanal: {regularity_mean*100:.0f}%",
+            f"Entregas promedio/semana: {assessment_mean:.2f}",
+            f"Semanas con entrega: {submission_rate*100:.0f}%",
+            f"Tendencia clicks: {delta_clicks_mean:+.1f}",
+            f"Tendencia diversidad: {delta_diversity_mean:+.1f}",
+            f"Resultado dominante: {top_outcome} ({outcome_rates[top_outcome]*100:.1f}%)",
+        ]
+
         result.append(
             {
                 "cluster": c,
                 "label": labels[c]["title"],
                 "description": labels[c]["description"],
+                "reasons": reasons,
                 "total_students": int(row["total_students"]) if pd.notna(row["total_students"]) else 0,
-                "clicks_mean": float(row["clicks_total_mean"]),
-                "resources_mean": float(row["resources_touched_mean"]),
+                "clicks_mean": clicks_mean,
+                "resources_mean": resources_mean,
+                "resource_types_mean": resource_types_mean,
                 "events_mean": float(row["events_count_mean"]),
-                "clicks_std_mean": float(row["clicks_std_mean"]) if pd.notna(row["clicks_std_mean"]) else 0.0,
-                "rate_pass": get_rate(c, "Pass"),
-                "rate_fail": get_rate(c, "Fail"),
-                "rate_withdrawn": get_rate(c, "Withdrawn"),
-                "rate_distinction": get_rate(c, "Distinction"),
+                "assessment_events_mean": assessment_mean,
+                "has_submission_week_rate": submission_rate,
+                "weeks_active_ratio_mean": regularity_mean,
+                "clicks_delta_prev_week_mean": delta_clicks_mean,
+                "resource_diversity_delta_mean": delta_diversity_mean,
+                "clicks_std_mean": clicks_std_mean,
+                "trend_ratio": trend_ratio,
+                "rate_pass": rate_pass,
+                "rate_fail": rate_fail,
+                "rate_withdrawn": rate_withdrawn,
+                "rate_distinction": rate_distinction,
             }
         )
 
     out_path = artifacts_dir / "cluster_labels.json"
     out_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
 
-    print("OK Job 06")
+    print("OK Job 07")
     print("saved:", out_path)
 
 

@@ -1,10 +1,16 @@
 from fastapi import APIRouter, Query, Depends
 from sqlalchemy.orm import Session
 from ..db import get_session
-from ..services.mart_store import load_mart
+from ..services.mart_store import load_mart, reload_mart
 from ..services.risk_config_store import get_active_risk_config
 
 router = APIRouter(prefix="/analytics")
+
+
+@router.post("/reload")
+def reload_mart_cache():
+    result = reload_mart()
+    return {"status": "ok", **result}
 
 @router.get("/courses/{course_id}/profiles")
 def profiles_by_course(course_id: str):
@@ -47,12 +53,27 @@ def student_trajectory(user_id: int, course_id: str = Query(...)):
 
     d = d.sort_values("week_id")
 
+    for col in [
+        "assessment_events",
+        "has_submission_week",
+        "weeks_active_ratio",
+        "clicks_delta_prev_week",
+        "resource_diversity_delta",
+    ]:
+        if col not in d.columns:
+            d[col] = 0
+
     cols = [
         "week_id",
         "clicks_total",
         "resources_touched",
         "resource_types_touched",
         "events_count",
+        "assessment_events",
+        "has_submission_week",
+        "weeks_active_ratio",
+        "clicks_delta_prev_week",
+        "resource_diversity_delta",
         "cluster",
         "final_result",
     ]
@@ -115,6 +136,16 @@ def alerts(
     cur["low_events"] = (cur["events_count"] <= p25_events).astype(int)
     cur["low_resources"] = (cur["resources_touched"] <= p25_resources).astype(int)
 
+    for col in [
+        "assessment_events",
+        "has_submission_week",
+        "weeks_active_ratio",
+        "clicks_delta_prev_week",
+        "resource_diversity_delta",
+    ]:
+        if col not in cur.columns:
+            cur[col] = 0
+
     # score 0..1
     cfg = get_active_risk_config(session)
     cur["risk_score"] = (
@@ -126,6 +157,14 @@ def alerts(
 
     def reasons_row(r):
         reasons = []
+        if r.get("assessment_events", 0) == 0:
+            reasons.append("Sin actividad de evaluación esta semana")
+        if r.get("has_submission_week", 0) == 1 and r["low_clicks"] == 1:
+            reasons.append("Semana con entrega con baja interacción")
+        if r.get("clicks_delta_prev_week", 0) < 0 and r["has_prev"] == 1:
+            reasons.append("Caída de clicks frente a la semana previa")
+        if r.get("resource_diversity_delta", 0) < 0:
+            reasons.append("Menor diversidad de recursos")
         if r["drop_clicks_pct"] >= cfg["drop_threshold"]:
             reasons.append(f"Caída de clicks vs semana anterior ({r['drop_clicks_pct']*100:.0f}%)")
         if r["low_clicks"] == 1:
@@ -136,7 +175,7 @@ def alerts(
             reasons.append("Recursos en el 25% más bajo del curso")
         if not reasons:
             reasons.append("Actividad baja relativa")
-        return reasons[:3]
+        return reasons[:4]
 
     cur["reasons"] = cur.apply(reasons_row, axis=1)
 
@@ -164,6 +203,11 @@ def alerts(
             "clicks_total",
             "resources_touched",
             "events_count",
+            "assessment_events",
+            "has_submission_week",
+            "weeks_active_ratio",
+            "clicks_delta_prev_week",
+            "resource_diversity_delta",
             "cluster",
             "final_result",
             "risk_score",

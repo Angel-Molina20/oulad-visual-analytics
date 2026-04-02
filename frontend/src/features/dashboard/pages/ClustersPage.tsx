@@ -30,6 +30,7 @@ export default function ClustersPage() {
         maxWeekAvailable,
         selectedCluster,
         setSelectedCluster,
+        selectedWeek,
     } = useDashboardFilters()
     const [cohortMetric, setCohortMetric] = useState("clicks_total")
 
@@ -40,7 +41,12 @@ export default function ClustersPage() {
     const profiles = useProfiles(courseId)
     const labels = useClusterLabels(courseId)
     const clusterOut = useClusterOutcomes(courseId)
-    const cohorts = useCohorts(courseId, cohortMetric, weekMin, weekMax)
+    const baseWeekMin = weekMin ?? minWeekAvailable
+    const baseWeekMax = weekMax ?? maxWeekAvailable
+    const effectiveWeek = selectedWeek ?? baseWeekMax ?? baseWeekMin ?? null
+    const resolvedWeekMin = weekMode === "week" ? effectiveWeek : weekMin
+    const resolvedWeekMax = weekMode === "week" ? effectiveWeek : weekMax
+    const cohorts = useCohorts(courseId, cohortMetric, resolvedWeekMin, resolvedWeekMax)
 
     const error = coursesError || profiles.error || labels.error || clusterOut.error || cohorts.error
 

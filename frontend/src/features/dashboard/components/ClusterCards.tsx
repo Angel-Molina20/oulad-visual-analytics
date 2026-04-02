@@ -6,6 +6,10 @@ function pct(x: number) {
     return `${(x * 100).toFixed(1)}%`
 }
 
+function fmt(value: number | null | undefined, digits = 1) {
+    return Number.isFinite(value) ? Number(value).toFixed(digits) : "-"
+}
+
 export default function ClusterCards({ clusters, selectedCluster, onSelectCluster }: { clusters: ClusterLabel[] | null, selectedCluster: number | null, onSelectCluster: (cluster: number | null) => void }) {
     if (!clusters?.length) return null
 
@@ -28,10 +32,21 @@ export default function ClusterCards({ clusters, selectedCluster, onSelectCluste
                 {sorted.map((c) => {
                     const clicks = c.clicks_mean_course ?? c.clicks_mean
                     const resources = c.resources_mean_course ?? c.resources_mean
+                    const resourceTypes = c.resource_types_mean_course ?? c.resource_types_mean
                     const isSelected = selectedCluster === c.cluster
                     const pass = c.rate_pass_course ?? c.rate_pass
                     const fail = c.rate_fail_course ?? c.rate_fail
                     const withdrawn = c.rate_withdrawn_course ?? c.rate_withdrawn
+                    const distinction = c.rate_distinction_course ?? c.rate_distinction
+
+                    const outcomeRates: Record<string, number> = {
+                        Pass: pass,
+                        Fail: fail,
+                        Withdrawn: withdrawn,
+                        Distinction: distinction,
+                    }
+                    const topOutcome = Object.entries(outcomeRates).sort((a, b) => b[1] - a[1])[0]
+                    const topOutcomeLabel = topOutcome ? `${outcomeLabel(topOutcome[0])} ${pct(topOutcome[1])}` : "-"
 
                     const nCourse = c.total_students_course
                     const nGlobal = c.total_students
@@ -87,8 +102,14 @@ export default function ClusterCards({ clusters, selectedCluster, onSelectCluste
                                         </Typography>
 
                                         <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-                                            <Chip size="small" label={`Clicks/sem: ${clicks.toFixed(1)}`} />
-                                            <Chip size="small" label={`Recursos/sem: ${resources.toFixed(1)}`} />
+                                            <Chip size="small" label={`Clicks/sem: ${fmt(clicks)}`} />
+                                            <Chip size="small" label={`Recursos/sem: ${fmt(resources)}`} />
+                                            <Chip size="small" label={`Diversidad/sem: ${fmt(resourceTypes)}`} />
+                                        </Stack>
+
+                                        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                                            <Chip size="small" variant="outlined" label={`Variación semanal: σ ${fmt(c.clicks_std_mean)}`} />
+                                            <Chip size="small" variant="outlined" label={`Resultado dominante: ${topOutcomeLabel}`} />
                                         </Stack>
 
                                         <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
@@ -96,6 +117,16 @@ export default function ClusterCards({ clusters, selectedCluster, onSelectCluste
                                             <Chip size="small" variant="outlined" label={`${outcomeLabel("Fail")}: ${pct(fail)}`} />
                                             <Chip size="small" label={`${outcomeLabel("Withdrawn")}: ${pct(withdrawn)}`} />
                                         </Stack>
+
+                                        {c.reasons?.length ? (
+                                            <Stack spacing={0.25} sx={{ mt: 0.25 }}>
+                                                {c.reasons.slice(0, 3).map((reason) => (
+                                                    <Typography key={reason} variant="caption" color="text.secondary">
+                                                        {reason}
+                                                    </Typography>
+                                                ))}
+                                            </Stack>
+                                        ) : null}
 
                                         {smallSample && (
                                             <Chip

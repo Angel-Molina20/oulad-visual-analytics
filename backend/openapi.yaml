@@ -123,6 +123,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/WeeksResponse"
+  /analytics/reload:
+    post:
+      tags: [analytics]
+      summary: Recargar mart en memoria
+      description: Limpia el caché del mart y vuelve a cargar el archivo parquet.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  rows:
+                    type: integer
+                  path:
+                    type: string
+              example:
+                status: ok
+                rows: 12345
+                path: /data/processed/mart_clean.parquet
   /analytics/courses/{course_id}/alerts:
     get:
       tags: [analytics]
@@ -550,6 +573,16 @@ components:
           type: number
         events_count:
           type: number
+        assessment_events:
+          type: number
+        has_submission_week:
+          type: integer
+        weeks_active_ratio:
+          type: number
+        clicks_delta_prev_week:
+          type: number
+        resource_diversity_delta:
+          type: number
         cluster:
           type: integer
         final_result:
@@ -588,6 +621,16 @@ components:
         resources_touched:
           type: number
         events_count:
+          type: number
+        assessment_events:
+          type: number
+        has_submission_week:
+          type: integer
+        weeks_active_ratio:
+          type: number
+        clicks_delta_prev_week:
+          type: number
+        resource_diversity_delta:
           type: number
         cluster:
           type: integer

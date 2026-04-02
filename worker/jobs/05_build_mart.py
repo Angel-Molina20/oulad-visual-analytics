@@ -22,6 +22,18 @@ def main():
 
     df = pd.read_parquet(clustered_path)
 
+    # Asegura columnas derivadas del pipeline enriquecido
+    defaults = {
+        "assessment_events": 0,
+        "has_submission_week": 0,
+        "weeks_active_ratio": 0.0,
+        "clicks_delta_prev_week": 0.0,
+        "resource_diversity_delta": 0.0,
+    }
+    for col, default in defaults.items():
+        if col not in df.columns:
+            df[col] = default
+
     csv_dir = find_csv_dir(raw_dir)
     student_info = pd.read_csv(csv_dir / "studentInfo.csv")
 

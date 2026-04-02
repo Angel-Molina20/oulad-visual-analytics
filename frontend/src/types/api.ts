@@ -24,6 +24,11 @@ export type TrajectoryRow = {
     resources_touched: number
     resource_types_touched: number
     events_count: number
+    assessment_events?: number
+    has_submission_week?: number
+    weeks_active_ratio?: number
+    clicks_delta_prev_week?: number
+    resource_diversity_delta?: number
     cluster: number
     final_result: string | null
 }
@@ -41,6 +46,11 @@ export type AlertRow = {
     clicks_total: number
     resources_touched: number
     events_count: number
+    assessment_events?: number
+    has_submission_week?: number
+    weeks_active_ratio?: number
+    clicks_delta_prev_week?: number
+    resource_diversity_delta?: number
     cluster: number
     final_result: string | null
     risk_score: number
@@ -104,6 +114,11 @@ export type StudentWeekRow = {
     clicks_total: number
     resources_touched: number
     events_count: number
+    assessment_events?: number
+    has_submission_week?: number
+    weeks_active_ratio?: number
+    clicks_delta_prev_week?: number
+    resource_diversity_delta?: number
     cluster: number
     final_result: string | null
     risk_score?: number

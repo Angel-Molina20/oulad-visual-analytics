@@ -1,15 +1,11 @@
-import {
-    Alert,
-    Container,
-    Stack,
-} from "@mui/material"
+import {Alert, Container, Stack,} from "@mui/material"
 import AppShell from "../components/layout/AppShell"
 import AlertsPanel from "../components/AlertsPanel"
 import SummaryRow from "../components/SummaryRow"
-import { useAlerts } from "../hooks/useAlerts"
-import { useAlertsRangeSummary } from "../hooks/useAlertsRangeSummary"
+import {useAlerts} from "../hooks/useAlerts"
+import {useAlertsRangeSummary} from "../hooks/useAlertsRangeSummary"
 import FiltersBar from "../components/FiltersBar"
-import { useDashboardFilters } from "../context/DashboardFiltersContext"
+import {useDashboardFilters} from "../context/DashboardFiltersContext"
 
 export default function DashboardPage() {
     const {
@@ -26,13 +22,15 @@ export default function DashboardPage() {
         setWeekMax,
         minWeekAvailable,
         maxWeekAvailable,
+        selectedWeek,
     } = useDashboardFilters()
 
-    const resolvedWeekMin = weekMin ?? minWeekAvailable
-    const resolvedWeekMax = weekMax ?? maxWeekAvailable
-    const alertWeek = resolvedWeekMax ?? resolvedWeekMin ?? 0
-
-    const alerts = useAlerts(courseId, alertWeek, 50)
+    const baseWeekMin = weekMin ?? minWeekAvailable
+    const baseWeekMax = weekMax ?? maxWeekAvailable
+    const effectiveWeek = selectedWeek ?? baseWeekMax ?? baseWeekMin ?? 0
+    const resolvedWeekMin = weekMode === "week" ? effectiveWeek : baseWeekMin
+    const resolvedWeekMax = weekMode === "week" ? effectiveWeek : baseWeekMax
+    const alerts = useAlerts(courseId, effectiveWeek, 50)
     const rangeSummary = useAlertsRangeSummary(courseId, resolvedWeekMin ?? null, resolvedWeekMax ?? null, 50)
 
     const error = coursesError || alerts.error || rangeSummary.error

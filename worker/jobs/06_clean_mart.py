@@ -16,17 +16,36 @@ def main():
     df = df[df["week_id"] >= 0].copy()
 
     # 2) nulos -> 0 en métricas
-    for col in ["clicks_total", "resources_touched", "resource_types_touched", "events_count"]:
+    for col in [
+        "clicks_total",
+        "resources_touched",
+        "resource_types_touched",
+        "events_count",
+        "assessment_events",
+        "has_submission_week",
+        "weeks_active_ratio",
+        "clicks_delta_prev_week",
+        "resource_diversity_delta",
+    ]:
         if col in df.columns:
             df[col] = df[col].fillna(0)
 
     # 3) asegurar 1 fila por (course_id, user_id, week_id)
     keys = ["course_id", "user_id", "week_id"]
-    metric_cols = ["clicks_total", "resources_touched", "resource_types_touched", "events_count"]
+    metric_cols_sum = [
+        "clicks_total",
+        "resources_touched",
+        "resource_types_touched",
+        "events_count",
+        "assessment_events",
+        "has_submission_week",
+    ]
+    metric_cols_mean = ["weeks_active_ratio", "clicks_delta_prev_week", "resource_diversity_delta"]
     keep_cols = ["cluster", "final_result"]
 
     # Agregamos métricas, y para cluster/final_result tomamos el primero (deberían ser iguales)
-    agg = {c: "sum" for c in metric_cols if c in df.columns}
+    agg = {c: "sum" for c in metric_cols_sum if c in df.columns}
+    agg.update({c: "mean" for c in metric_cols_mean if c in df.columns})
     for c in keep_cols:
         if c in df.columns:
             agg[c] = "first"
@@ -35,7 +54,7 @@ def main():
 
     df2.to_parquet(out, index=False)
 
-    print("OK Job 05b")
+    print("OK Job 06")
     print("saved:", out)
     print("rows before:", len(df), "after:", len(df2))
 
