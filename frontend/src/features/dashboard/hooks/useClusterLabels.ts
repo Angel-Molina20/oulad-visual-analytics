@@ -5,11 +5,14 @@ export type ClusterLabel = {
     cluster: number
     label: string
     description: string
+    reasons?: string[]
     total_students: number
     clicks_mean: number
     resources_mean: number
+    resource_types_mean?: number
     events_mean: number
     clicks_std_mean: number
+    trend_ratio?: number
     rate_pass: number
     rate_fail: number
     rate_withdrawn: number
@@ -20,6 +23,7 @@ export type ClusterLabel = {
     total_students_course?: number
     clicks_mean_course?: number
     resources_mean_course?: number
+    resource_types_mean_course?: number
     events_mean_course?: number
     rate_pass_course?: number
     rate_fail_course?: number

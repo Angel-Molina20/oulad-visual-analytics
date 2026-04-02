@@ -6,26 +6,7 @@ export type ClusterMeta = {
 }
 
 // Estado interno actualizable
-let CLUSTER_META: Record<string, ClusterMeta> = {
-    "0": {
-        code: "C0",
-        label: "Cluster 0",
-        description: "Perfil sin descripción disponible.",
-        tone: "default",
-    },
-    "1": {
-        code: "C1",
-        label: "Cluster 1",
-        description: "Perfil sin descripción disponible.",
-        tone: "default",
-    },
-    "2": {
-        code: "C2",
-        label: "Cluster 2",
-        description: "Perfil sin descripción disponible.",
-        tone: "default",
-    },
-}
+let CLUSTER_META: Record<string, ClusterMeta> = {}
 
 export function getClusterMeta(cluster: string | number): ClusterMeta {
     const key = String(cluster)

@@ -37,11 +37,12 @@ import { getAlertsConclusion } from "../utils/conclusions"
 import type { AlertsResponse, AlertRow, AlertFeedback } from "../../../types/api"
 import RiskBreakdown from "./RiskBreakdown"
 import { getClusterMeta } from "../utils/clusterMeta"
+import { useClusterLabels } from "../hooks/useClusterLabels"
 import { outcomeLabel } from "../utils/outcomes"
 import { apiGet, apiPost } from "../../../api/client"
 
 type RiskFilterValue = "all" | "high" | "medium" | "low"
-type ClusterFilterValue = "all" | "0" | "1" | "2"
+type ClusterFilterValue = "all" | string
 type StatusFilterValue = "all" | "open" | "resolved"
 
 type Props = {
@@ -69,6 +70,29 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
     const [noteDialogValue, setNoteDialogValue] = useState("")
     const [noteDialogAlert, setNoteDialogAlert] = useState<AlertRow | null>(null)
     const [studentAlert, setStudentAlert] = useState<AlertRow | null>(null)
+
+    const { data: clusterLabels } = useClusterLabels(courseId)
+
+    const clusterOptions = useMemo(() => {
+        if (clusterLabels?.length) {
+            return clusterLabels
+                .map((c) => ({ value: String(c.cluster), label: `C${c.cluster} · ${c.label}` }))
+                .sort((a, b) => Number(a.value) - Number(b.value))
+        }
+        const unique = new Set<string>()
+        data?.alerts.forEach((a) => unique.add(String(a.cluster)))
+        return [...unique]
+            .sort((a, b) => Number(a) - Number(b))
+            .map((value) => ({ value, label: `C${value}` }))
+    }, [clusterLabels, data?.alerts])
+
+    useEffect(() => {
+        if (clusterFilter === "all") return
+        if (!clusterOptions.some((opt) => opt.value === clusterFilter)) {
+            setClusterFilter("all")
+            setPage(0)
+        }
+    }, [clusterFilter, clusterOptions])
 
     useEffect(() => {
         if (!data?.course_id) return
@@ -491,9 +515,11 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                             fullWidth
                         >
                             <MenuItem value="all">Todos</MenuItem>
-                            <MenuItem value="0">C0 · Alta participación</MenuItem>
-                            <MenuItem value="1">C1 · Baja participación</MenuItem>
-                            <MenuItem value="2">C2 · Participación media</MenuItem>
+                            {clusterOptions.map((option) => (
+                                <MenuItem key={option.value} value={option.value}>
+                                    {option.label}
+                                </MenuItem>
+                            ))}
                         </TextField>
                     </Grid>
 
