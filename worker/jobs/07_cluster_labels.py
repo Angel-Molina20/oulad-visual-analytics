@@ -13,9 +13,9 @@ def main():
     artifacts_dir = Path(os.getenv("ARTIFACTS_DIR", "/data/artifacts")) / "clustering"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
 
-    mart_path = processed_dir / "mart.parquet"
+    mart_path = processed_dir / "mart_clean.parquet"
     if not mart_path.exists():
-        raise SystemExit("No existe mart.parquet. Ejecuta job 05.")
+        raise SystemExit("No existe mart_clean.parquet. Ejecuta job 06.")
 
     df = pd.read_parquet(mart_path)
 

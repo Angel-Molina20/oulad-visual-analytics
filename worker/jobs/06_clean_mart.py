@@ -35,7 +35,7 @@ def main():
 
     df2.to_parquet(out, index=False)
 
-    print("OK Job 05b")
+    print("OK Job 06")
     print("saved:", out)
     print("rows before:", len(df), "after:", len(df2))
 

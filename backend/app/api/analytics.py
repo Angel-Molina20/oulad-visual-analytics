@@ -1,10 +1,16 @@
 from fastapi import APIRouter, Query, Depends
 from sqlalchemy.orm import Session
 from ..db import get_session
-from ..services.mart_store import load_mart
+from ..services.mart_store import load_mart, reload_mart
 from ..services.risk_config_store import get_active_risk_config
 
 router = APIRouter(prefix="/analytics")
+
+
+@router.post("/reload")
+def reload_mart_cache():
+    result = reload_mart()
+    return {"status": "ok", **result}
 
 @router.get("/courses/{course_id}/profiles")
 def profiles_by_course(course_id: str):

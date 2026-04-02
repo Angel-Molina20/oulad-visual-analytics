@@ -123,6 +123,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/WeeksResponse"
+  /analytics/reload:
+    post:
+      tags: [analytics]
+      summary: Recargar mart en memoria
+      description: Limpia el caché del mart y vuelve a cargar el archivo parquet.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  rows:
+                    type: integer
+                  path:
+                    type: string
+              example:
+                status: ok
+                rows: 12345
+                path: /data/processed/mart_clean.parquet
   /analytics/courses/{course_id}/alerts:
     get:
       tags: [analytics]

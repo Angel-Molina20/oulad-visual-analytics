@@ -13,7 +13,7 @@ def _mart_path() -> Path:
 def load_mart() -> pd.DataFrame:
     path = _mart_path()
     if not path.exists():
-        raise FileNotFoundError(f"No existe {path}. Ejecuta job 05 para generar mart.parquet.")
+        raise FileNotFoundError(f"No existe {path}. Ejecuta job 06 para generar mart_clean.parquet.")
     df = pd.read_parquet(path)
 
     # Limpieza mínima para el API
@@ -23,5 +23,7 @@ def load_mart() -> pd.DataFrame:
     return df
 
 
-def reload_mart() -> None:
+def reload_mart() -> dict:
     load_mart.cache_clear()
+    df = load_mart()
+    return {"rows": int(len(df)), "path": str(_mart_path())}
