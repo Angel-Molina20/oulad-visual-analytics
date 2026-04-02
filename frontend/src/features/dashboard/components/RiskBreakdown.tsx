@@ -13,6 +13,10 @@ export default function RiskBreakdown({ a }: { a: AlertRow }) {
     const w = a.week_id
     const prevW = (a as any).prev_week
     const hasPrev = (a as any).has_prev === 1
+    const assessmentEvents = a.assessment_events ?? 0
+    const hasSubmission = (a.has_submission_week ?? 0) > 0
+    const deltaClicks = a.clicks_delta_prev_week ?? 0
+    const deltaDiversity = a.resource_diversity_delta ?? 0
 
     const tooltip = (
         <Stack spacing={0.5} sx={{ p: 0.5, maxWidth: 360 }}>
@@ -39,6 +43,17 @@ export default function RiskBreakdown({ a }: { a: AlertRow }) {
                 {hasPrev ? `Clicks semana ${prevW}: ${a.prev_clicks}` : "Sin semana anterior"}
             </Typography>
 
+            <Typography variant="body2">
+                Delta clicks: {deltaClicks >= 0 ? "+" : ""}{Math.round(deltaClicks)}
+            </Typography>
+
+            <Typography variant="body2">
+                Delta diversidad: {deltaDiversity >= 0 ? "+" : ""}{Math.round(deltaDiversity)}
+            </Typography>
+
+            <Typography variant="body2">
+                Evaluaciones: {assessmentEvents} · Entrega: {hasSubmission ? "Si" : "No"}
+            </Typography>
 
             {"drop_clicks_pct" in a && a.drop_clicks_pct != null && (
                 <Typography variant="body2">
