@@ -358,6 +358,7 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                         title="Casos de riesgo alto"
                         value={`${highRiskCount}`}
                         description="Estudiantes filtrados con prioridad alta de seguimiento."
+                        color="#ef4444"
                     />
                 </Grid>
 
@@ -370,6 +371,7 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                                 ? getClusterMeta(topRiskStudent.cluster).description
                                 : "No hay estudiante visible en la tabla."
                         }
+                        color="#f59e0b"
                     />
                 </Grid>
 
@@ -378,6 +380,7 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                         title="Promedio de clicks"
                         value={`${avgClicks}`}
                         description="Media de interacciones del grupo visible en la tabla."
+                        color="#3b82f6"
                     />
                 </Grid>
             </Grid>

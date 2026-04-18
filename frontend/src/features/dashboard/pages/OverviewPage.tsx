@@ -126,8 +126,18 @@ export default function OverviewPage() {
             <Container maxWidth={false} disableGutters sx={{ width: "100%" }}>
                 <Stack spacing={2.5}>
 
-                    {/* Selector de curso */}
-                    <Stack direction="row" alignItems="center" spacing={2}>
+                    {/* Filtro de curso */}
+                    <Box
+                        sx={{
+                            p: 2,
+                            borderRadius: 2.5,
+                            border: "1px solid rgba(15,23,42,0.07)",
+                            bgcolor: "#fff",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 2,
+                        }}
+                    >
                         <Autocomplete
                             options={courseOptions}
                             value={selectedCourse}
@@ -139,9 +149,8 @@ export default function OverviewPage() {
                                     {...params}
                                     label="Curso"
                                     sx={{
-                                        bgcolor: "#fff",
-                                        borderRadius: 2,
-                                        "& .MuiInputBase-root": { height: 48 },
+                                        bgcolor: "transparent",
+                                        "& .MuiInputBase-root": { height: 44 },
                                         "& .MuiInputLabel-root": { fontSize: 14 },
                                     }}
                                     fullWidth
@@ -149,10 +158,10 @@ export default function OverviewPage() {
                             )}
                             disableClearable
                             noOptionsText="Sin cursos"
-                            sx={{ width: 340 }}
+                            sx={{ width: 320 }}
                         />
-                        {loading && <CircularProgress size={20} />}
-                    </Stack>
+                        {loading && <CircularProgress size={18} />}
+                    </Box>
 
                     {anyError && <Alert severity="error">{anyError}</Alert>}
 
