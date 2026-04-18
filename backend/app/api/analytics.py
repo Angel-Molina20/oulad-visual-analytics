@@ -15,26 +15,23 @@ def reload_mart_cache():
 
 @router.get("/courses/{course_id}/profiles")
 def profiles_by_course(course_id: str):
-    df = load_mart()
-    d = df[df["course_id"] == course_id].copy()
+    from ..services.mart_store import query_mart
 
-    if d.empty:
-        return {"course_id": course_id, "profiles": [], "note": "course_id no encontrado"}
-
-    # distribución de clusters por curso
-    cluster_counts = (
-        d.groupby("cluster")["user_id"]
-        .nunique()
-        .reset_index(name="students")
-        .sort_values("students", ascending=False)
+    cluster_counts = query_mart(
+        "SELECT cluster, COUNT(DISTINCT user_id) AS students "
+        "FROM mart WHERE course_id = ? "
+        "GROUP BY cluster ORDER BY students DESC",
+        [course_id],
     )
 
-    # relación cluster vs resultado final
-    outcome = (
-        d.groupby(["cluster", "final_result"])["user_id"]
-        .nunique()
-        .reset_index(name="students")
-        .sort_values(["cluster", "students"], ascending=[True, False])
+    if cluster_counts.empty:
+        return {"course_id": course_id, "profiles": [], "note": "course_id no encontrado"}
+
+    outcome = query_mart(
+        "SELECT cluster, final_result, COUNT(DISTINCT user_id) AS students "
+        "FROM mart WHERE course_id = ? "
+        "GROUP BY cluster, final_result ORDER BY cluster, students DESC",
+        [course_id],
     )
 
     return {
@@ -156,29 +153,42 @@ def alerts(
             + cfg["w_low_resources"] * cur["low_resources"]
     ).clip(0.0, 1.0)
 
-    def reasons_row(r):
+    # Vectorized reason building (avoids row-level Python apply loop)
+    drop_threshold = cfg["drop_threshold"]
+    r_no_assess   = cur["assessment_events"].fillna(0) == 0
+    r_submit_low  = (cur["has_submission_week"].fillna(0) == 1) & (cur["low_clicks"] == 1)
+    r_click_drop  = (cur["clicks_delta_prev_week"].fillna(0) < 0) & (cur["has_prev"] == 1)
+    r_div_drop    = cur["resource_diversity_delta"].fillna(0) < 0
+    r_drop_pct    = cur["drop_clicks_pct"] >= drop_threshold
+    r_low_clicks  = cur["low_clicks"] == 1
+    r_low_events  = cur["low_events"] == 1
+    r_low_res     = cur["low_resources"] == 1
+
+    drop_pct_vals = (cur["drop_clicks_pct"] * 100).round(0).astype(int).astype(str)
+
+    def _build_reasons(idx):
         reasons = []
-        if r.get("assessment_events", 0) == 0:
+        if r_no_assess.at[idx]:
             reasons.append("Sin actividad de evaluación esta semana")
-        if r.get("has_submission_week", 0) == 1 and r["low_clicks"] == 1:
+        if r_submit_low.at[idx]:
             reasons.append("Semana con entrega con baja interacción")
-        if r.get("clicks_delta_prev_week", 0) < 0 and r["has_prev"] == 1:
+        if r_click_drop.at[idx]:
             reasons.append("Caída de clicks frente a la semana previa")
-        if r.get("resource_diversity_delta", 0) < 0:
+        if r_div_drop.at[idx]:
             reasons.append("Menor diversidad de recursos")
-        if r["drop_clicks_pct"] >= cfg["drop_threshold"]:
-            reasons.append(f"Caída de clicks vs semana anterior ({r['drop_clicks_pct']*100:.0f}%)")
-        if r["low_clicks"] == 1:
+        if r_drop_pct.at[idx]:
+            reasons.append(f"Caída de clicks vs semana anterior ({drop_pct_vals.at[idx]}%)")
+        if r_low_clicks.at[idx]:
             reasons.append("Clicks en el 25% más bajo del curso")
-        if r["low_events"] == 1:
+        if r_low_events.at[idx]:
             reasons.append("Eventos en el 25% más bajo del curso")
-        if r["low_resources"] == 1:
+        if r_low_res.at[idx]:
             reasons.append("Recursos en el 25% más bajo del curso")
         if not reasons:
             reasons.append("Actividad baja relativa")
         return reasons[:4]
 
-    cur["reasons"] = cur.apply(reasons_row, axis=1)
+    cur["reasons"] = [_build_reasons(i) for i in cur.index]
 
     if user_id is not None:
         cur = cur[cur["user_id"] == user_id].copy()
@@ -238,32 +248,28 @@ def cohorts_timeseries(
         week_min: int | None = Query(default=None, ge=0),
         week_max: int | None = Query(default=None, ge=0),
 ):
-    df = load_mart()
-    d = df[df["course_id"] == course_id].copy()
-    d = d[d["week_id"] >= 0]
+    from ..services.mart_store import query_mart
 
-    allowed = {
-        "clicks_total": "clicks_total",
-        "resources_touched": "resources_touched",
-        "events_count": "events_count",
-    }
+    allowed = {"clicks_total", "resources_touched", "events_count"}
     if metric not in allowed:
         return {"course_id": course_id, "metric": metric, "series": [], "note": "métrica no permitida"}
 
-    if week_min is not None:
-        d = d[d["week_id"] >= week_min]
+    col = metric  # safe: validated against allowlist above
+    wmin = week_min if week_min is not None else 0
+    wmax_clause = "AND week_id <= ?" if week_max is not None else ""
+    params: list = [course_id, wmin]
     if week_max is not None:
-        d = d[d["week_id"] <= week_max]
+        params.append(week_max)
 
-    if d.empty:
-        return {"course_id": course_id, "metric": metric, "series": [], "note": "sin datos en el rango"}
-
-    col = allowed[metric]
-    g = (
-        d.groupby(["week_id", "cluster"], as_index=False)
-        .agg(value=(col, "mean"), n=("user_id", "nunique"))
-        .sort_values(["week_id", "cluster"])
+    g = query_mart(
+        f"SELECT week_id, cluster, AVG({col}) AS value, COUNT(DISTINCT user_id) AS n "
+        f"FROM mart WHERE course_id = ? AND week_id >= ? {wmax_clause} "
+        f"GROUP BY week_id, cluster ORDER BY week_id, cluster",
+        params,
     )
+
+    if g.empty:
+        return {"course_id": course_id, "metric": metric, "series": [], "note": "sin datos en el rango"}
 
     return {
         "course_id": course_id,
@@ -283,27 +289,23 @@ def course_baseline(
     Promedio semanal del curso.
     Si cluster viene, promedio semanal solo de ese cluster dentro del curso.
     """
-    df = load_mart()
-    d = df[df["course_id"] == course_id].copy()
+    from ..services.mart_store import query_mart
 
-    if "week_id" in d.columns:
-        d = d[d["week_id"] >= 0]
-
+    cluster_clause = "AND cluster = ?" if cluster is not None else ""
+    params: list = [course_id]
     if cluster is not None:
-        d = d[d["cluster"] == cluster]
+        params.append(cluster)
 
-    if d.empty:
-        return {"course_id": course_id, "cluster": cluster, "baseline": [], "note": "sin datos"}
-
-    baseline = (
-        d.groupby("week_id", as_index=False)
-        .agg(
-            clicks_mean=("clicks_total", "mean"),
-            resources_mean=("resources_touched", "mean"),
-            events_mean=("events_count", "mean"),
-        )
-        .sort_values("week_id")
+    baseline = query_mart(
+        f"SELECT week_id, AVG(clicks_total) AS clicks_mean, "
+        f"AVG(resources_touched) AS resources_mean, AVG(events_count) AS events_mean "
+        f"FROM mart WHERE course_id = ? AND week_id >= 0 {cluster_clause} "
+        f"GROUP BY week_id ORDER BY week_id",
+        params,
     )
+
+    if baseline.empty:
+        return {"course_id": course_id, "cluster": cluster, "baseline": [], "note": "sin datos"}
 
     return {
         "course_id": course_id,
@@ -343,42 +345,53 @@ def cluster_outcomes(course_id: str):
     - Se calcula a nivel estudiante-curso (una fila por estudiante),
       para evitar duplicaciones por semana.
     """
-    df = load_mart()
-    d = df[df["course_id"] == course_id].copy()
+    from ..services.mart_store import query_mart
 
-    if d.empty:
+    # Última semana por estudiante, luego agrupa
+    merged = query_mart(
+        """
+        WITH last_week AS (
+            SELECT course_id, user_id,
+                   LAST_VALUE(cluster)       OVER w AS cluster,
+                   LAST_VALUE(final_result)  OVER w AS final_result
+            FROM mart
+            WHERE course_id = ?
+            WINDOW w AS (PARTITION BY course_id, user_id ORDER BY week_id
+                         ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY course_id, user_id ORDER BY week_id DESC) = 1
+        ),
+        counts AS (
+            SELECT cluster, final_result, COUNT(DISTINCT user_id) AS students
+            FROM last_week GROUP BY cluster, final_result
+        ),
+        totals AS (
+            SELECT cluster, COUNT(DISTINCT user_id) AS total_students
+            FROM last_week GROUP BY cluster
+        )
+        SELECT c.cluster, c.final_result, c.students, t.total_students,
+               ROUND(c.students::DOUBLE / t.total_students, 4) AS rate
+        FROM counts c JOIN totals t ON c.cluster = t.cluster
+        ORDER BY c.cluster, c.students DESC
+        """,
+        [course_id],
+    )
+
+    if merged.empty:
         return {"course_id": course_id, "clusters": [], "note": "course_id no encontrado"}
-
-    # Una fila por estudiante (tomamos la última semana disponible)
-    base = (
-        d.sort_values("week_id")
-        .groupby(["course_id", "user_id"], as_index=False)
-        .last()[["course_id", "user_id", "cluster", "final_result"]]
-    )
-
-    counts = (
-        base.groupby(["cluster", "final_result"])["user_id"]
-        .nunique()
-        .reset_index(name="students")
-    )
-
-    totals = (
-        base.groupby("cluster")["user_id"]
-        .nunique()
-        .reset_index(name="total_students")
-    )
-
-    merged = counts.merge(totals, on="cluster", how="left")
-    merged["rate"] = (merged["students"] / merged["total_students"]).round(4)
 
     return {"course_id": course_id, "clusters": merged.to_dict(orient="records")}
 
 @router.get("/courses/{course_id}/weeks")
 def course_weeks(course_id: str):
-    df = load_mart()
-    d = df[df["course_id"] == course_id].copy()
+    from ..services.mart_store import query_mart
 
-    if d.empty:
+    result = query_mart(
+        "SELECT week_id FROM mart WHERE course_id = ? AND week_id >= 0 "
+        "GROUP BY week_id ORDER BY week_id",
+        [course_id],
+    )
+
+    if result.empty:
         return {
             "course_id": course_id,
             "week_min": 0,
@@ -387,20 +400,10 @@ def course_weeks(course_id: str):
             "note": "course_id no encontrado",
         }
 
-    d = d[d["week_id"] >= 0]
-    if d.empty:
-        return {
-            "course_id": course_id,
-            "week_min": 0,
-            "week_max": 0,
-            "weeks": [],
-            "note": "sin datos de semanas",
-        }
-
-    weeks = sorted(d["week_id"].unique().tolist())
+    weeks = [int(w) for w in result["week_id"].tolist()]
     return {
         "course_id": course_id,
-        "week_min": int(weeks[0]),
-        "week_max": int(weeks[-1]),
-        "weeks": [int(w) for w in weeks],
+        "week_min": weeks[0],
+        "week_max": weeks[-1],
+        "weeks": weeks,
     }

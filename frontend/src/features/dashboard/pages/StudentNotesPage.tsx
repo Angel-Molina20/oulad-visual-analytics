@@ -3,6 +3,7 @@ import {
     Alert,
     Autocomplete,
     Box,
+    Button,
     Chip,
     Container,
     Grid,
@@ -22,6 +23,8 @@ import {
 } from "@mui/material"
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded"
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded"
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded"
+import { downloadCsv } from "../../../utils/exportCsv"
 import AppShell from "../components/layout/AppShell"
 import { useStudentNotes } from "../hooks/useStudentNotes"
 import { useWeeks } from "../hooks/useWeeks"
@@ -147,6 +150,20 @@ export default function StudentNotesPage() {
         },
     }
 
+    const handleExport = () => {
+        const suffix = notesCourseId ? `_${notesCourseId}` : ""
+        const filename = `notas${suffix}_${new Date().toISOString().slice(0, 10)}.csv`
+        downloadCsv(rows, [
+            { label: "Estudiante",  value: (r) => getStudentName(r.user_id, nameMap) },
+            { label: "Curso",       value: (r) => r.course_id },
+            { label: "Semana",      value: (r) => r.week_id },
+            { label: "Estado",      value: (r) => r.status === "resolved" ? "Revisado" : "Pendiente" },
+            { label: "Riesgo (%)",  value: (r) => r.risk_score != null ? Math.round(r.risk_score * 100) : "" },
+            { label: "Comentario",  value: (r) => r.note ?? "" },
+            { label: "Actualizado", value: (r) => new Date(r.updated_at || r.created_at).toLocaleString() },
+        ], filename)
+    }
+
     const markReviewed = async (row: NoteRow) => {
         if (row.status !== "open") return
         try {
@@ -168,14 +185,36 @@ export default function StudentNotesPage() {
         <AppShell>
             <Container maxWidth={false} disableGutters sx={{ width: "100%" }}>
                 <Stack spacing={2.5}>
-                    <Box>
-                        <Typography variant="h6" fontWeight={700}>
-                            Notas de estudiantes
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            Registro de comentarios docentes por estudiante.
-                        </Typography>
-                    </Box>
+                    <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        justifyContent="space-between"
+                        alignItems={{ xs: "flex-start", sm: "center" }}
+                        spacing={1}
+                    >
+                        <Box>
+                            <Typography variant="h6" fontWeight={700}>
+                                Notas de estudiantes
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Registro de comentarios docentes por estudiante.
+                            </Typography>
+                        </Box>
+
+                        <Tooltip title={`Exportar ${rows.length} filas a CSV`}>
+                            <span>
+                                <Button
+                                    variant="outlined"
+                                    color="success"
+                                    startIcon={<DownloadRoundedIcon />}
+                                    onClick={handleExport}
+                                    disabled={rows.length === 0}
+                                    size="small"
+                                >
+                                    Exportar CSV
+                                </Button>
+                            </span>
+                        </Tooltip>
+                    </Stack>
 
                     <Box
                         sx={{
