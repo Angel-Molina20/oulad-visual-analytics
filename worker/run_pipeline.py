@@ -10,6 +10,7 @@ JOBS = [
     "jobs.05_build_mart",
     "jobs.06_clean_mart",
     "jobs.07_cluster_labels",
+    "jobs.08_train_classifier",
 ]
 
 def run(job: str):
