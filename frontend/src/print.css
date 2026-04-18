@@ -1,0 +1,78 @@
+@media print {
+  /* ── Ocultar toda la UI de navegación ─────────────────────────────────── */
+  .no-print,
+  nav,
+  header,
+  .MuiDrawer-root,
+  .MuiAppBar-root,
+  .MuiToolbar-root,
+  .MuiToggleButtonGroup-root,
+  .MuiPagination-root,
+  .MuiTablePagination-root,
+  .MuiBreadcrumbs-root,
+  [data-no-print] {
+    display: none !important;
+  }
+
+  /* ── Mostrar sólo el contenido de impresión ───────────────────────────── */
+  [data-print-only] {
+    display: block !important;
+  }
+
+  /* ── Layout: sin sidebar, ancho total ────────────────────────────────── */
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 11pt !important;
+    font-family: "Helvetica Neue", Arial, sans-serif !important;
+  }
+
+  /* Contenedor principal ocupa todo el ancho */
+  .MuiBox-root {
+    box-shadow: none !important;
+  }
+
+  /* El área de contenido (el Box con flexGrow:1) pasa a ser full width */
+  #root > * > * {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  /* ── Forzar colores en gráficas ───────────────────────────────────────── */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ── Márgenes de página A4 ────────────────────────────────────────────── */
+  @page {
+    size: A4 portrait;
+    margin: 18mm 15mm 18mm 15mm;
+  }
+
+  /* ── Cards sin sombra ─────────────────────────────────────────────────── */
+  .MuiCard-root,
+  .MuiPaper-root {
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  /* ── Tablas ───────────────────────────────────────────────────────────── */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    page-break-inside: auto;
+  }
+  tr { page-break-inside: avoid; }
+  th, td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 5px 8px !important;
+    font-size: 9pt !important;
+  }
+  th { background: #f1f5f9 !important; font-weight: 700 !important; }
+
+  /* ── Chips ────────────────────────────────────────────────────────────── */
+  .MuiChip-root {
+    border: 1px solid #94a3b8 !important;
+  }
+}
