@@ -78,6 +78,7 @@ export type AlertFeedback = {
     course_id: string
     week_id: number
     user_id: number
+    display_name?: string | null
     risk_score: number | null
     status: "open" | "resolved"
     note: string | null
