@@ -28,11 +28,11 @@ import { downloadCsv } from "../../../utils/exportCsv"
 import AppShell from "../components/layout/AppShell"
 import { useStudentNotes } from "../hooks/useStudentNotes"
 import { useWeeks } from "../hooks/useWeeks"
+import { useStudentList } from "../hooks/useStudentList"
 import { apiPost } from "../../../api/client"
 import type { AlertFeedback } from "../../../types/api"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useDashboardFilters } from "../context/DashboardFiltersContext"
-import { buildStudentNameMap, getStudentName } from "../../../utils/studentNames"
 
 type StatusFilterValue = "all" | "open" | "resolved"
 
@@ -77,11 +77,15 @@ export default function StudentNotesPage() {
         status: statusFilter === "all" ? undefined : statusFilter,
     })
 
+    const { data: studentList } = useStudentList(notesCourseId)
+
     const error = coursesError || notes.error
 
     const nameMap = useMemo(() => {
-        return buildStudentNameMap(notes.data.map((r) => r.user_id))
-    }, [notes.data])
+        const map = new Map<number, string>()
+        studentList.forEach((s) => map.set(s.user_id, s.display_name ?? "Demo Test ?"))
+        return map
+    }, [studentList])
 
     const statusLabel = (status: StatusFilterValue) => {
         if (status === "resolved") return "Revisado"
@@ -126,7 +130,7 @@ export default function StudentNotesPage() {
         return notes.data.filter((row) => {
             if (!row.note || row.note.trim().length === 0) return false
             if (!query) return true
-            return getStudentName(row.user_id, nameMap).toLowerCase().includes(query)
+            return nameMap.get(row.user_id) ?? "Demo Test ?".toLowerCase().includes(query)
         })
     }, [notes.data, studentFilter, nameMap])
 
@@ -302,7 +306,7 @@ export default function StudentNotesPage() {
                             <TableBody>
                                 {paginatedRows.map((row: NoteRow) => (
                                     <TableRow key={row.id} hover>
-                                        <TableCell>{getStudentName(row.user_id, nameMap)}</TableCell>
+                                        <TableCell>{nameMap.get(row.user_id) ?? "Demo Test ?"}</TableCell>
                                         <TableCell>{row.course_id}</TableCell>
                                         <TableCell>{row.week_id}</TableCell>
                                         <TableCell>
@@ -361,7 +365,7 @@ export default function StudentNotesPage() {
                                                         color="primary"
                                                         aria-label="Ver trayectoria"
                                                         onClick={() => {
-                                                            const studentName = encodeURIComponent(getStudentName(row.user_id, nameMap))
+                                                            const studentName = encodeURIComponent(nameMap.get(row.user_id) ?? "Demo Test ?")
                                                             navigate(
                                                                 `/trajectory/${row.course_id}/${row.user_id}?week=${row.week_id}&from=${encodeURIComponent(location.pathname)}&name=${studentName}`
                                                             )

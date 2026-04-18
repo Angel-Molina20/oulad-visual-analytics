@@ -75,8 +75,9 @@ def student_trajectory(user_id: int, course_id: str = Query(...)):
         "cluster",
         "final_result",
     ]
+    display_name = d["display_name"].iloc[0] if "display_name" in d.columns else "Demo Test ?"
     traj = d[cols].to_dict(orient="records")
-    return {"course_id": course_id, "user_id": user_id, "trajectory": traj}
+    return {"course_id": course_id, "user_id": user_id, "display_name": display_name, "trajectory": traj}
 
 
 @router.get("/courses/{course_id}/alerts")
@@ -236,6 +237,8 @@ def alerts(
         "p25_clicks", "p25_events", "p25_resources",
         "low_clicks", "low_events", "low_resources", "has_prev", "prev_week",
     ]
+    if "display_name" in cur.columns:
+        base_cols = ["user_id", "display_name"] + base_cols[1:]
     pred_cols = [c for c in ["pred_label", "pred_confidence", "pred_proba"] if c in cur.columns]
     alerts_out = cur[base_cols + pred_cols].to_dict(orient="records")
 
@@ -416,7 +419,7 @@ def course_students(course_id: str):
 
     result = query_mart(
         """
-        SELECT user_id, cluster, final_result
+        SELECT user_id, display_name, cluster, final_result
         FROM mart
         WHERE course_id = ?
         QUALIFY ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY week_id DESC) = 1

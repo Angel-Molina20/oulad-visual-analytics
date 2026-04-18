@@ -3,6 +3,7 @@ import { apiGet } from "../../../api/client"
 
 export type StudentListRow = {
     user_id: number
+    display_name?: string
     cluster: number
     final_result: string | null
 }

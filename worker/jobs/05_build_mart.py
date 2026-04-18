@@ -43,6 +43,19 @@ def main():
         columns={"id_student": "user_id"}
     )
 
+    # Asignar display_name una sola vez desde la fuente de verdad:
+    # por cada curso, ordenar user_id y numerar desde 1.
+    student_ids = (
+        outcome[["course_id", "user_id"]]
+        .drop_duplicates()
+        .sort_values(["course_id", "user_id"])
+        .copy()
+    )
+    student_ids["display_name"] = (
+        "Demo Test " + (student_ids.groupby("course_id").cumcount() + 1).astype(str)
+    )
+    outcome = outcome.merge(student_ids, on=["course_id", "user_id"], how="left")
+
     mart = df.merge(outcome, on=["user_id", "course_id"], how="left")
 
     out_path = processed_dir / "mart.parquet"
