@@ -21,6 +21,7 @@ import {
     DialogContent,
     DialogActions,
 } from "@mui/material"
+import { buildStudentNameMap, getStudentName } from "../../../utils/studentNames"
 import { useNavigate, useLocation } from "react-router-dom"
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded"
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded"
@@ -69,7 +70,6 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
     const [noteDialogMode, setNoteDialogMode] = useState<"review" | "edit">("review")
     const [noteDialogValue, setNoteDialogValue] = useState("")
     const [noteDialogAlert, setNoteDialogAlert] = useState<AlertRow | null>(null)
-    const [studentAlert, setStudentAlert] = useState<AlertRow | null>(null)
 
     const { data: clusterLabels } = useClusterLabels(courseId)
 
@@ -93,6 +93,11 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
             setPage(0)
         }
     }, [clusterFilter, clusterOptions])
+
+    const nameMap = useMemo(() => {
+        if (!data?.alerts) return new Map<number, string>()
+        return buildStudentNameMap(data.alerts.map((a) => a.user_id))
+    }, [data?.alerts])
 
     useEffect(() => {
         if (!data?.course_id) return
@@ -181,52 +186,13 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
         closeNoteDialog()
     }
 
-    useEffect(() => {
-        const trimmed = studentFilter.trim()
-        if (!data?.course_id || !trimmed) {
-            setStudentAlert(null)
-            return
-        }
-        const userId = Number(trimmed)
-        if (!Number.isFinite(userId)) {
-            setStudentAlert(null)
-            return
-        }
-        let cancelled = false
-        const handle = setTimeout(() => {
-            apiGet<AlertsResponse>(
-                `/analytics/courses/${encodeURIComponent(courseId)}/alerts?week_id=${data.week_id}&top=1&user_id=${userId}`
-            )
-                .then((response) => {
-                    if (cancelled) return
-                    setStudentAlert(response.alerts[0] ?? null)
-                })
-                .catch(() => {
-                    if (cancelled) return
-                    setStudentAlert(null)
-                })
-        }, 300)
-        return () => {
-            cancelled = true
-            clearTimeout(handle)
-        }
-    }, [studentFilter, data?.course_id, data?.week_id, courseId])
-
     const filteredRows = useMemo(() => {
         if (!data) return []
 
-        const mergedAlerts = studentAlert
-            ? [
-                studentAlert,
-                ...data.alerts.filter(
-                    (a) => !(a.user_id === studentAlert.user_id && a.week_id === studentAlert.week_id)
-                ),
-            ]
-            : data.alerts
-
-        const rows = mergedAlerts.filter((a) => {
+        const rows = data.alerts.filter((a) => {
+            const query = studentFilter.trim().toLowerCase()
             const matchesStudent =
-                !studentFilter.trim() || String(a.user_id).includes(studentFilter.trim())
+                !query || getStudentName(a.user_id, nameMap).toLowerCase().includes(query)
 
             const matchesRisk =
                 riskFilter === "all"
@@ -261,7 +227,7 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
         })
 
         return rows
-    }, [data, studentFilter, riskFilter, clusterFilter, statusFilter, feedbackMap, studentAlert])
+    }, [data, studentFilter, nameMap, riskFilter, clusterFilter, statusFilter, feedbackMap])
 
     const paginatedRows = useMemo(() => {
         const start = page * rowsPerPage
@@ -359,7 +325,7 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                 <Grid item xs={12} md={4}>
                     <InsightCard
                         title="Mayor riesgo detectado"
-                        value={topRiskStudent ? `${topRiskStudent.user_id}` : "-"}
+                        value={topRiskStudent ? getStudentName(topRiskStudent.user_id, nameMap) : "-"}
                         description={
                             topRiskStudent
                                 ? getClusterMeta(topRiskStudent.cluster).description
@@ -409,7 +375,7 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
             <AnalysisDialog
                 open={caseAnalysisOpen}
                 onClose={() => setCaseAnalysisOpen(false)}
-                title={selectedAlert ? `Análisis del caso ${selectedAlert.user_id}` : "Análisis del caso"}
+                title={selectedAlert ? `Análisis del caso ${getStudentName(selectedAlert.user_id, nameMap)}` : "Análisis del caso"}
                 subtitle={
                     selectedAlert
                         ? `Curso ${courseId} · Semana ${selectedAlert.week_id}`
@@ -475,7 +441,7 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                     <Grid item xs={12} md={4}>
                         <TextField
                             label="Estudiante"
-                            placeholder="Ej. 11391"
+                            placeholder="Ej. Demo Test 5"
                             value={studentFilter}
                             onChange={(e) => {
                                 setStudentFilter(e.target.value)
@@ -603,7 +569,7 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                                 const status = getStatus(a)
                                 return (
                                     <TableRow key={`${a.user_id}-${a.week_id}`} hover>
-                                        <TableCell>{a.user_id}</TableCell>
+                                        <TableCell>{getStudentName(a.user_id, nameMap)}</TableCell>
                                         <TableCell align="right">{a.clicks_total}</TableCell>
                                         <TableCell align="right">{a.resources_touched}</TableCell>
                                         <TableCell align="right">{a.events_count}</TableCell>
@@ -691,8 +657,9 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                                                                 },
                                                             }).catch(() => null)
                                                             const from = encodeURIComponent(location.pathname)
+                                                            const studentName = encodeURIComponent(getStudentName(a.user_id, nameMap))
                                                             navigate(
-                                                                `/trajectory/${courseId}/${a.user_id}?week=${a.week_id}&from=${from}`
+                                                                `/trajectory/${courseId}/${a.user_id}?week=${a.week_id}&from=${from}&name=${studentName}`
                                                             )
                                                         }}
                                                     >

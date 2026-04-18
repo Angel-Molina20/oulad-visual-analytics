@@ -69,6 +69,12 @@ export default function StudentTrajectoryPage() {
         return "Resumen"
     }, [returnTo])
 
+    const studentDisplayName = useMemo(() => {
+        const sp = new URLSearchParams(location.search)
+        const raw = sp.get("name")
+        return raw ? decodeURIComponent(raw) : `Estudiante ${numericUserId}`
+    }, [location.search, numericUserId])
+
     return (
         <AppShell>
             <Container
@@ -118,7 +124,7 @@ export default function StudentTrajectoryPage() {
                             <Box>
                                 <Typography variant="h4">Trayectoria del estudiante</Typography>
                                 <Typography variant="body1" color="text.secondary">
-                                    Curso {courseId}, estudiante {numericUserId}
+                                    Curso {courseId} · {studentDisplayName}
                                 </Typography>
                                 {summary && (
                                     <Stack

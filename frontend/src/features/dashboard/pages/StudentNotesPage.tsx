@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react"
 import {
     Alert,
-    Autocomplete,
     Box,
     Chip,
     Container,
@@ -29,6 +28,7 @@ import { apiPost } from "../../../api/client"
 import type { AlertFeedback } from "../../../types/api"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useDashboardFilters } from "../context/DashboardFiltersContext"
+import { buildStudentNameMap, getStudentName } from "../../../utils/studentNames"
 
 type StatusFilterValue = "all" | "open" | "resolved"
 
@@ -68,14 +68,16 @@ export default function StudentNotesPage() {
         return courseOptions.find((opt) => opt.value === notesCourseId) ?? courseOptions[0]
     }, [courseOptions, notesCourseId])
 
-    const studentQuery = useMemo(() => studentFilter.trim(), [studentFilter])
-
     const notes = useStudentNotes({
         courseId: notesCourseId || undefined,
         status: statusFilter === "all" ? undefined : statusFilter,
     })
 
     const error = coursesError || notes.error
+
+    const nameMap = useMemo(() => {
+        return buildStudentNameMap(notes.data.map((r) => r.user_id))
+    }, [notes.data])
 
     const statusLabel = (status: StatusFilterValue) => {
         if (status === "resolved") return "Revisado"
@@ -116,13 +118,13 @@ export default function StudentNotesPage() {
     }
 
     const rows = useMemo(() => {
-        const query = studentQuery
+        const query = studentFilter.trim().toLowerCase()
         return notes.data.filter((row) => {
             if (!row.note || row.note.trim().length === 0) return false
             if (!query) return true
-            return String(row.user_id).includes(query)
+            return getStudentName(row.user_id, nameMap).toLowerCase().includes(query)
         })
-    }, [notes.data, studentQuery])
+    }, [notes.data, studentFilter, nameMap])
 
     const paginatedRows = useMemo(() => {
         const start = page * rowsPerPage
@@ -223,7 +225,7 @@ export default function StudentNotesPage() {
                             <Grid item xs={12} md={3}>
                                 <TextField
                                     label="Estudiante"
-                                    placeholder="Ej. 11391"
+                                    placeholder="Ej. Demo Test 5"
                                     value={studentFilter}
                                     onChange={(e) => {
                                         setStudentFilter(e.target.value)
@@ -274,7 +276,7 @@ export default function StudentNotesPage() {
                             <TableBody>
                                 {paginatedRows.map((row: NoteRow) => (
                                     <TableRow key={row.id} hover>
-                                        <TableCell>{row.user_id}</TableCell>
+                                        <TableCell>{getStudentName(row.user_id, nameMap)}</TableCell>
                                         <TableCell>{row.course_id}</TableCell>
                                         <TableCell>{row.week_id}</TableCell>
                                         <TableCell>
@@ -332,11 +334,12 @@ export default function StudentNotesPage() {
                                                         size="small"
                                                         color="primary"
                                                         aria-label="Ver trayectoria"
-                                                        onClick={() =>
+                                                        onClick={() => {
+                                                            const studentName = encodeURIComponent(getStudentName(row.user_id, nameMap))
                                                             navigate(
-                                                                `/trajectory/${row.course_id}/${row.user_id}?week=${row.week_id}&from=${encodeURIComponent(location.pathname)}`
+                                                                `/trajectory/${row.course_id}/${row.user_id}?week=${row.week_id}&from=${encodeURIComponent(location.pathname)}&name=${studentName}`
                                                             )
-                                                        }
+                                                        }}
                                                     >
                                                         <VisibilityRoundedIcon />
                                                     </IconButton>
