@@ -66,6 +66,9 @@ export type AlertRow = {
     low_events?: number
     low_resources?: number
     has_prev?: number
+    pred_label?: string | null
+    pred_proba?: Record<string, number> | null
+    pred_confidence?: number | null
 }
 
 export type AlertFeedback = {

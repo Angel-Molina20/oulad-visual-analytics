@@ -264,11 +264,14 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
     const caseInsights = selectedAlert
         ? [
             `Resultado final: ${outcomeLabel(selectedAlert.final_result)}`,
+            selectedAlert.pred_label
+                ? `Predicción ML: ${selectedAlert.pred_label} (confianza ${Math.round((selectedAlert.pred_confidence ?? 0) * 100)}%)`
+                : null,
             `Cluster actual: ${caseMeta?.code} · ${caseMeta?.label}`,
             `Clicks: ${selectedAlert.clicks_total} · Recursos: ${selectedAlert.resources_touched}`,
             `Eventos: ${selectedAlert.events_count} · Riesgo: ${(selectedAlert.risk_score * 100).toFixed(0)}%`,
             selectedAlert.reasons?.length ? `Señales detectadas: ${selectedAlert.reasons.slice(0, 2).join(" / ")}` : "",
-        ].filter(Boolean)
+        ].filter(Boolean) as string[]
         : []
 
     const caseRecommendations = selectedAlert
@@ -304,6 +307,22 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
     const statusColor = (status: StatusFilterValue) => {
         if (status === "resolved") return "success"
         return "warning"
+    }
+
+    const predColor = (label: string | null | undefined) => {
+        if (label === "Distinction") return "success"
+        if (label === "Pass") return "primary"
+        if (label === "Fail") return "warning"
+        if (label === "Withdrawn") return "error"
+        return "default"
+    }
+
+    const predTooltip = (proba: Record<string, number> | null | undefined) => {
+        if (!proba) return "Sin predicción disponible"
+        return Object.entries(proba)
+            .sort(([, a], [, b]) => b - a)
+            .map(([k, v]) => `${k}: ${Math.round(v * 100)}%`)
+            .join(" · ")
     }
 
     if (!data) return null
@@ -541,23 +560,24 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                     <Table size="medium">
                         <TableHead>
                             <TableRow>
-                                <TableCell sx={{ fontWeight: 700, width: "12%" }}>Estudiante</TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 700, width: "10%" }}>
+                                <TableCell sx={{ fontWeight: 700, width: "11%" }}>Estudiante</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 700, width: "7%" }}>
                                     Clicks
                                 </TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 700, width: "10%" }}>
+                                <TableCell align="right" sx={{ fontWeight: 700, width: "7%" }}>
                                     Recursos
                                 </TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 700, width: "10%" }}>
+                                <TableCell align="right" sx={{ fontWeight: 700, width: "7%" }}>
                                     Eventos
                                 </TableCell>
                                 <TableCell sx={{ fontWeight: 700, width: "12%" }}>Cluster</TableCell>
-                                <TableCell sx={{ fontWeight: 700, width: "12%" }}>Resultado</TableCell>
-                                <TableCell sx={{ fontWeight: 700, width: "12%" }}>Riesgo</TableCell>
-                                <TableCell align="center" sx={{ fontWeight: 700, width: "10%" }}>
+                                <TableCell sx={{ fontWeight: 700, width: "9%" }}>Resultado</TableCell>
+                                <TableCell sx={{ fontWeight: 700, width: "11%" }}>Pred. ML</TableCell>
+                                <TableCell sx={{ fontWeight: 700, width: "11%" }}>Riesgo</TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 700, width: "9%" }}>
                                     Estado
                                 </TableCell>
-                                <TableCell align="center" sx={{ fontWeight: 700, width: "22%" }}>
+                                <TableCell align="center" sx={{ fontWeight: 700, width: "16%" }}>
                                     Acción
                                 </TableCell>
                             </TableRow>
@@ -592,6 +612,22 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                                         </TableCell>
 
                                         <TableCell>{outcomeLabel(a.final_result)}</TableCell>
+
+                                        <TableCell>
+                                            {a.pred_label ? (
+                                                <Tooltip title={predTooltip(a.pred_proba)} arrow placement="top">
+                                                    <Chip
+                                                        size="small"
+                                                        label={`${a.pred_label} ${Math.round((a.pred_confidence ?? 0) * 100)}%`}
+                                                        color={predColor(a.pred_label) as "success" | "primary" | "warning" | "error" | "default"}
+                                                        variant="outlined"
+                                                    />
+                                                </Tooltip>
+                                            ) : (
+                                                <Typography variant="caption" color="text.disabled">—</Typography>
+                                            )}
+                                        </TableCell>
+
                                         <TableCell>
                                             <RiskBreakdown a={a} />
                                         </TableCell>

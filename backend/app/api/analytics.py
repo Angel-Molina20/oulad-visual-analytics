@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from ..db import get_session
 from ..services.mart_store import load_mart, reload_mart
 from ..services.risk_config_store import get_active_risk_config
+from ..services.classifier_store import is_classifier_available, predict_outcomes, get_classifier_meta
 
 router = APIRouter(prefix="/analytics")
 
@@ -196,36 +197,37 @@ def alerts(
     cur["p25_resources"] = p25_resources
     cur["prev_week"] = cur["week_id"] - 1
 
-    alerts_out = cur[
-        [
-            "user_id",
-            "week_id",
-            "clicks_total",
-            "resources_touched",
-            "events_count",
-            "assessment_events",
-            "has_submission_week",
-            "weeks_active_ratio",
-            "clicks_delta_prev_week",
-            "resource_diversity_delta",
-            "cluster",
-            "final_result",
-            "risk_score",
-            "reasons",
-            "drop_clicks_pct",
-            "prev_clicks",
-            "prev_events",
-            "prev_resources",
-            "p25_clicks",
-            "p25_events",
-            "p25_resources",
-            "low_clicks",
-            "low_events",
-            "low_resources",
-            "has_prev",
-            "prev_week",
-        ]
-    ].to_dict(orient="records")
+    # Predicción ML (opcional — solo si el modelo está entrenado)
+    if is_classifier_available():
+        try:
+            pred_rows = cur[
+                [c for c in [
+                    "clicks_total", "resources_touched", "resource_types_touched",
+                    "events_count", "assessment_events", "has_submission_week",
+                    "weeks_active_ratio", "clicks_delta_prev_week", "resource_diversity_delta",
+                    "cluster", "week_id",
+                ] if c in cur.columns]
+            ].fillna(0).to_dict(orient="records")
+            predictions = predict_outcomes(pred_rows)
+            cur["pred_label"] = [p["pred_label"] for p in predictions]
+            cur["pred_confidence"] = [p["pred_confidence"] for p in predictions]
+            cur["pred_proba"] = [p["pred_proba"] for p in predictions]
+        except Exception:
+            cur["pred_label"] = None
+            cur["pred_confidence"] = None
+            cur["pred_proba"] = None
+
+    base_cols = [
+        "user_id", "week_id", "clicks_total", "resources_touched", "events_count",
+        "assessment_events", "has_submission_week", "weeks_active_ratio",
+        "clicks_delta_prev_week", "resource_diversity_delta",
+        "cluster", "final_result", "risk_score", "reasons",
+        "drop_clicks_pct", "prev_clicks", "prev_events", "prev_resources",
+        "p25_clicks", "p25_events", "p25_resources",
+        "low_clicks", "low_events", "low_resources", "has_prev", "prev_week",
+    ]
+    pred_cols = [c for c in ["pred_label", "pred_confidence", "pred_proba"] if c in cur.columns]
+    alerts_out = cur[base_cols + pred_cols].to_dict(orient="records")
 
     return {"course_id": course_id, "week_id": week_id, "alerts": alerts_out}
 
@@ -319,6 +321,18 @@ def student_week(course_id: str, week_id: int = Query(...), user_id: int = Query
     row = d.iloc[0].to_dict()
     # Si quieres, aquí también calculas reasons usando la misma lógica del /alerts
     return {"course_id": course_id, "week_id": week_id, "user_id": user_id, "row": row}
+
+@router.get("/classifier/meta")
+def classifier_meta():
+    """Devuelve métricas de evaluación del modelo predictivo (accuracy, F1, feature importances)."""
+    if not is_classifier_available():
+        return {"available": False, "note": "Modelo no entrenado. Ejecuta el job 08 del pipeline."}
+    try:
+        meta = get_classifier_meta()
+        return {"available": True, **meta}
+    except Exception as e:
+        return {"available": False, "note": str(e)}
+
 
 @router.get("/courses/{course_id}/cluster-outcomes")
 def cluster_outcomes(course_id: str):
