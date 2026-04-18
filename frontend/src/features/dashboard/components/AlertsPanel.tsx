@@ -24,6 +24,8 @@ import {
 import { buildStudentNameMap, getStudentName } from "../../../utils/studentNames"
 import { useNavigate, useLocation } from "react-router-dom"
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded"
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded"
+import { downloadCsv } from "../../../utils/exportCsv"
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded"
 import AssessmentRoundedIcon from "@mui/icons-material/AssessmentRounded"
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded"
@@ -253,6 +255,24 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
         setClusterFilter("all")
         setStatusFilter("all")
         setPage(0)
+    }
+
+    const handleExport = () => {
+        const filename = `alertas_${courseId}_semana${data?.week_id ?? ""}_${new Date().toISOString().slice(0, 10)}.csv`
+        downloadCsv(filteredRows, [
+            { label: "Estudiante",       value: (a) => getStudentName(a.user_id, nameMap) },
+            { label: "Semana",           value: (a) => a.week_id },
+            { label: "Clicks",           value: (a) => a.clicks_total },
+            { label: "Recursos",         value: (a) => a.resources_touched },
+            { label: "Eventos",          value: (a) => a.events_count },
+            { label: "Cluster",          value: (a) => a.cluster },
+            { label: "Resultado",        value: (a) => a.final_result ?? "" },
+            { label: "Prediccion ML",    value: (a) => a.pred_label ?? "" },
+            { label: "Confianza ML (%)", value: (a) => a.pred_confidence != null ? Math.round(a.pred_confidence * 100) : "" },
+            { label: "Riesgo (%)",       value: (a) => Math.round(a.risk_score * 100) },
+            { label: "Estado",           value: (a) => getStatus(a) === "resolved" ? "Revisado" : "Pendiente" },
+            { label: "Nota",             value: (a) => getNoteValue(a) ?? "" },
+        ], filename)
     }
 
     const openCaseAnalysis = (alert: AlertRow) => {
@@ -525,7 +545,7 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                         </TextField>
                     </Grid>
 
-                    <Grid item xs={12} md={2}>
+                    <Grid item xs={6} md={1}>
                         <Button
                             variant="outlined"
                             onClick={handleReset}
@@ -534,6 +554,24 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                         >
                             Limpiar
                         </Button>
+                    </Grid>
+
+                    <Grid item xs={6} md={1}>
+                        <Tooltip title={`Exportar ${filteredRows.length} filas a CSV`}>
+                            <span style={{ display: "block", height: "100%" }}>
+                                <Button
+                                    variant="outlined"
+                                    color="success"
+                                    startIcon={<DownloadRoundedIcon />}
+                                    onClick={handleExport}
+                                    disabled={filteredRows.length === 0}
+                                    fullWidth
+                                    sx={{ height: "100%" }}
+                                >
+                                    CSV
+                                </Button>
+                            </span>
+                        </Tooltip>
                     </Grid>
                 </Grid>
 
