@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_session
 from ..models import AlertFeedback, AuditEvent, RiskConfig
+from ..services.mart_store import load_mart
 
 router = APIRouter(prefix="/ops")
 
@@ -29,6 +30,7 @@ class AlertFeedbackIn(BaseModel):
 
 class AlertFeedbackOut(AlertFeedbackIn, ORMModel):
     id: int
+    display_name: str | None = None
     created_at: datetime
     updated_at: datetime | None = None
 
@@ -55,6 +57,25 @@ def list_alert_feedback(
         stmt = stmt.where(AlertFeedback.note.isnot(None), AlertFeedback.note != "")
     stmt = stmt.order_by(desc(AlertFeedback.updated_at), desc(AlertFeedback.created_at))
     rows = session.execute(stmt).scalars().all()
+
+    try:
+        df = load_mart()
+        if "display_name" in df.columns:
+            name_lookup = (
+                df[["course_id", "user_id", "display_name"]]
+                .drop_duplicates(subset=["course_id", "user_id"])
+                .set_index(["course_id", "user_id"])["display_name"]
+                .to_dict()
+            )
+            result = []
+            for row in rows:
+                out = AlertFeedbackOut.model_validate(row)
+                out.display_name = name_lookup.get((row.course_id, row.user_id))
+                result.append(out)
+            return result
+    except Exception:
+        pass
+
     return rows
 
 

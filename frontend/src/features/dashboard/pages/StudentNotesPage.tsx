@@ -28,7 +28,6 @@ import { downloadCsv } from "../../../utils/exportCsv"
 import AppShell from "../components/layout/AppShell"
 import { useStudentNotes } from "../hooks/useStudentNotes"
 import { useWeeks } from "../hooks/useWeeks"
-import { useStudentList } from "../hooks/useStudentList"
 import { apiPost } from "../../../api/client"
 import type { AlertFeedback } from "../../../types/api"
 import { useNavigate, useLocation } from "react-router-dom"
@@ -77,15 +76,7 @@ export default function StudentNotesPage() {
         status: statusFilter === "all" ? undefined : statusFilter,
     })
 
-    const { data: studentList } = useStudentList(notesCourseId)
-
     const error = coursesError || notes.error
-
-    const nameMap = useMemo(() => {
-        const map = new Map<number, string>()
-        studentList.forEach((s) => map.set(s.user_id, s.display_name ?? "Demo Test ?"))
-        return map
-    }, [studentList])
 
     const statusLabel = (status: StatusFilterValue) => {
         if (status === "resolved") return "Revisado"
@@ -130,9 +121,9 @@ export default function StudentNotesPage() {
         return notes.data.filter((row) => {
             if (!row.note || row.note.trim().length === 0) return false
             if (!query) return true
-            return nameMap.get(row.user_id) ?? "Demo Test ?".toLowerCase().includes(query)
+            return (row.display_name ?? String(row.user_id)).toLowerCase().includes(query)
         })
-    }, [notes.data, studentFilter, nameMap])
+    }, [notes.data, studentFilter])
 
     const paginatedRows = useMemo(() => {
         const start = page * rowsPerPage
@@ -158,7 +149,7 @@ export default function StudentNotesPage() {
         const suffix = notesCourseId ? `_${notesCourseId}` : ""
         const filename = `notas${suffix}_${new Date().toISOString().slice(0, 10)}.csv`
         downloadCsv(rows, [
-            { label: "Estudiante",  value: (r) => getStudentName(r.user_id, nameMap) },
+            { label: "Estudiante",  value: (r) => r.display_name ?? String(r.user_id) },
             { label: "Curso",       value: (r) => r.course_id },
             { label: "Semana",      value: (r) => r.week_id },
             { label: "Estado",      value: (r) => r.status === "resolved" ? "Revisado" : "Pendiente" },
@@ -306,7 +297,7 @@ export default function StudentNotesPage() {
                             <TableBody>
                                 {paginatedRows.map((row: NoteRow) => (
                                     <TableRow key={row.id} hover>
-                                        <TableCell>{nameMap.get(row.user_id) ?? "Demo Test ?"}</TableCell>
+                                        <TableCell>{row.display_name ?? String(row.user_id)}</TableCell>
                                         <TableCell>{row.course_id}</TableCell>
                                         <TableCell>{row.week_id}</TableCell>
                                         <TableCell>
@@ -365,7 +356,7 @@ export default function StudentNotesPage() {
                                                         color="primary"
                                                         aria-label="Ver trayectoria"
                                                         onClick={() => {
-                                                            const studentName = encodeURIComponent(nameMap.get(row.user_id) ?? "Demo Test ?")
+                                                            const studentName = encodeURIComponent(row.display_name ?? String(row.user_id))
                                                             navigate(
                                                                 `/trajectory/${row.course_id}/${row.user_id}?week=${row.week_id}&from=${encodeURIComponent(location.pathname)}&name=${studentName}`
                                                             )
