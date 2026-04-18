@@ -15,10 +15,13 @@ import {
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded"
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded"
 import TimelineRoundedIcon from "@mui/icons-material/TimelineRounded"
+import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded"
 
 import AppShell from "../components/layout/AppShell"
 import TrajectoryPanel from "../components/TrajectoryPanel"
+import PrintStudentReport from "../components/PrintStudentReport"
 import { useTrajectory } from "../hooks/useTrajectory"
+import { useStudentNotes } from "../hooks/useStudentNotes"
 
 export default function StudentTrajectoryPage() {
     const { courseId = "", userId = "" } = useParams()
@@ -28,6 +31,9 @@ export default function StudentTrajectoryPage() {
     const canLoad = Boolean(courseId) && isValidUserId
 
     const traj = useTrajectory(courseId, canLoad ? numericUserId : 0)
+    const studentNotes = useStudentNotes(
+        canLoad ? { courseId, userId: numericUserId } : {}
+    )
 
     const location = useLocation()
     const navigate = useNavigate()
@@ -179,10 +185,22 @@ export default function StudentTrajectoryPage() {
                                 </TextField>
 
                                 <Button
+                                    variant="outlined"
+                                    color="error"
+                                    startIcon={<PictureAsPdfRoundedIcon />}
+                                    onClick={() => window.print()}
+                                    disabled={!traj.data}
+                                    className="no-print"
+                                >
+                                    Exportar PDF
+                                </Button>
+
+                                <Button
                                     component={RouterLink}
                                     to={returnTo}
                                     variant="outlined"
                                     startIcon={<ArrowBackRoundedIcon />}
+                                    className="no-print"
                                 >
                                     Volver a {returnLabel}
                                 </Button>
@@ -212,6 +230,16 @@ export default function StudentTrajectoryPage() {
                     )}
                 </Stack>
             </Container>
+
+            {/* Componente solo visible al imprimir */}
+            {traj.data && (
+                <PrintStudentReport
+                    studentName={studentDisplayName}
+                    courseId={courseId}
+                    data={traj.data}
+                    notes={studentNotes.data}
+                />
+            )}
         </AppShell>
     )
 }

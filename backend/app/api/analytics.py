@@ -407,3 +407,154 @@ def course_weeks(course_id: str):
         "week_max": weeks[-1],
         "weeks": weeks,
     }
+
+
+@router.get("/courses/{course_id}/students")
+def course_students(course_id: str):
+    """Lista de estudiantes únicos del curso con su cluster y resultado final (última semana)."""
+    from ..services.mart_store import query_mart
+
+    result = query_mart(
+        """
+        SELECT user_id, cluster, final_result
+        FROM mart
+        WHERE course_id = ?
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY week_id DESC) = 1
+        ORDER BY user_id
+        """,
+        [course_id],
+    )
+
+    if result.empty:
+        return {"course_id": course_id, "students": [], "note": "course_id no encontrado"}
+
+    return {
+        "course_id": course_id,
+        "students": result.to_dict(orient="records"),
+    }
+
+
+@router.get("/courses/{course_id}/overview")
+def course_overview(course_id: str):
+    """
+    KPIs y distribuciones agregadas de un curso para la página de vista general.
+    Todos los cálculos en DuckDB sobre el mart cacheado.
+    """
+    from ..services.mart_store import query_mart
+
+    # ── KPIs globales ────────────────────────────────────────────────────────
+    kpis = query_mart(
+        """
+        WITH per_student AS (
+            SELECT user_id,
+                   LAST_VALUE(cluster)      OVER w AS cluster,
+                   LAST_VALUE(final_result) OVER w AS final_result
+            FROM mart
+            WHERE course_id = ?
+            WINDOW w AS (PARTITION BY user_id ORDER BY week_id
+                         ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY week_id DESC) = 1
+        )
+        SELECT
+            COUNT(DISTINCT ps.user_id)                                          AS total_students,
+            COUNT(DISTINCT m.week_id)                                           AS total_weeks,
+            MIN(m.week_id)                                                      AS week_min,
+            MAX(m.week_id)                                                      AS week_max,
+            ROUND(AVG(m.clicks_total), 1)                                       AS avg_clicks_per_student_week,
+            COUNT(DISTINCT CASE WHEN ps.final_result IN ('Fail','Withdrawn')
+                                THEN ps.user_id END)                            AS at_risk_count
+        FROM mart m
+        JOIN per_student ps ON m.user_id = ps.user_id
+        WHERE m.course_id = ?
+        """,
+        [course_id, course_id],
+    )
+
+    if kpis.empty or kpis["total_students"].iloc[0] == 0:
+        return {"course_id": course_id, "note": "course_id no encontrado"}
+
+    row = kpis.iloc[0]
+
+    # ── Semana más activa ────────────────────────────────────────────────────
+    most_active = query_mart(
+        """
+        SELECT week_id, SUM(clicks_total) AS total_clicks
+        FROM mart WHERE course_id = ?
+        GROUP BY week_id
+        ORDER BY total_clicks DESC
+        LIMIT 1
+        """,
+        [course_id],
+    )
+    most_active_week = int(most_active["week_id"].iloc[0]) if not most_active.empty else None
+    most_active_clicks = int(most_active["total_clicks"].iloc[0]) if not most_active.empty else 0
+
+    # ── Distribución de resultados finales (por estudiante) ──────────────────
+    results_dist = query_mart(
+        """
+        WITH per_student AS (
+            SELECT user_id, LAST_VALUE(final_result) OVER w AS final_result
+            FROM mart
+            WHERE course_id = ?
+            WINDOW w AS (PARTITION BY user_id ORDER BY week_id
+                         ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY week_id DESC) = 1
+        )
+        SELECT final_result, COUNT(*) AS students
+        FROM per_student
+        GROUP BY final_result
+        ORDER BY students DESC
+        """,
+        [course_id],
+    )
+
+    # ── Distribución de clusters (por estudiante) ────────────────────────────
+    cluster_dist = query_mart(
+        """
+        WITH per_student AS (
+            SELECT user_id, LAST_VALUE(cluster) OVER w AS cluster
+            FROM mart
+            WHERE course_id = ?
+            WINDOW w AS (PARTITION BY user_id ORDER BY week_id
+                         ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY week_id DESC) = 1
+        )
+        SELECT cluster, COUNT(*) AS students
+        FROM per_student
+        GROUP BY cluster
+        ORDER BY cluster
+        """,
+        [course_id],
+    )
+
+    # ── Actividad semanal (clicks totales del curso) ─────────────────────────
+    weekly_activity = query_mart(
+        """
+        SELECT week_id,
+               SUM(clicks_total)      AS clicks_total,
+               SUM(events_count)      AS events_total,
+               COUNT(DISTINCT user_id) AS active_students
+        FROM mart
+        WHERE course_id = ? AND week_id >= 0
+        GROUP BY week_id
+        ORDER BY week_id
+        """,
+        [course_id],
+    )
+
+    return {
+        "course_id": course_id,
+        "kpis": {
+            "total_students":           int(row["total_students"]),
+            "total_weeks":              int(row["total_weeks"]),
+            "week_min":                 int(row["week_min"]),
+            "week_max":                 int(row["week_max"]),
+            "avg_clicks_per_student_week": float(row["avg_clicks_per_student_week"]),
+            "at_risk_count":            int(row["at_risk_count"]),
+            "most_active_week":         most_active_week,
+            "most_active_week_clicks":  most_active_clicks,
+        },
+        "results_dist":   results_dist.to_dict(orient="records"),
+        "cluster_dist":   cluster_dist.to_dict(orient="records"),
+        "weekly_activity": weekly_activity.to_dict(orient="records"),
+    }

@@ -12,9 +12,12 @@ import {
     Typography,
 } from "@mui/material"
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded"
+import BarChartRoundedIcon from "@mui/icons-material/BarChartRounded"
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded"
 import NoteAltRoundedIcon from "@mui/icons-material/NoteAltRounded"
 import PsychologyRoundedIcon from "@mui/icons-material/PsychologyRounded"
+import TuneRoundedIcon from "@mui/icons-material/TuneRounded"
+import CompareArrowsRoundedIcon from "@mui/icons-material/CompareArrowsRounded"
 import { Link, useLocation } from "react-router-dom"
 import { useEffect } from "react"
 import { ENV } from "../../../../config/env"
@@ -27,10 +30,13 @@ type Props = {
 }
 
 const items = [
-    { label: "Resumen", icon: <DashboardRoundedIcon />, to: "/" },
+    { label: "Vista general", icon: <BarChartRoundedIcon />, to: "/" },
+    { label: "Alertas de riesgo", icon: <DashboardRoundedIcon />, to: "/alerts" },
     { label: "Analitica de cursos", icon: <InsightsRoundedIcon />, to: "/clusters" },
+    { label: "Comparador", icon: <CompareArrowsRoundedIcon />, to: "/compare" },
     { label: "Notas de estudiantes", icon: <NoteAltRoundedIcon />, to: "/notes" },
     { label: "Modelo predictivo", icon: <PsychologyRoundedIcon />, to: "/model" },
+    { label: "Config. de riesgo", icon: <TuneRoundedIcon />, to: "/settings" },
 ]
 
 export default function AppShell({ children }: Props) {
@@ -44,6 +50,7 @@ export default function AppShell({ children }: Props) {
         <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "background.default" }}>
             <Drawer
                 variant="permanent"
+                className="no-print"
                 sx={{
                     width: drawerWidth,
                     flexShrink: 0,
@@ -118,6 +125,7 @@ export default function AppShell({ children }: Props) {
                     position="sticky"
                     color="inherit"
                     elevation={0}
+                    className="no-print"
                     sx={{
                         borderBottom: "1px solid rgba(15,23,42,0.08)",
                         bgcolor: "rgba(255,255,255,0.9)",
