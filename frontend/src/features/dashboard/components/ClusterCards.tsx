@@ -1,6 +1,14 @@
-import { Card, CardContent, Grid, Typography, Chip, Stack, Box } from "@mui/material"
+import { Card, CardContent, Grid, Typography, Chip, Stack, Box, Divider } from "@mui/material"
 import type { ClusterLabel } from "../hooks/useClusterLabels"
 import { outcomeLabel } from "../utils/outcomes"
+import { getClusterMeta } from "../utils/clusterMeta"
+
+const TONE_COLORS: Record<string, string> = {
+    success: "#22c55e",
+    warning: "#f59e0b",
+    error:   "#ef4444",
+    default: "#64748b",
+}
 
 function pct(x: number) {
     return `${(x * 100).toFixed(1)}%`
@@ -19,9 +27,9 @@ export default function ClusterCards({ clusters, selectedCluster, onSelectCluste
 
     return (
         <Box>
-            <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: 1 }}>
-                <Typography variant="h6" fontWeight={800}>
-                    Perfiles
+            <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: 1.5 }}>
+                <Typography variant="subtitle1" fontWeight={700} color="text.primary">
+                    Perfiles de actividad
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                     {subtitle}
@@ -51,104 +59,125 @@ export default function ClusterCards({ clusters, selectedCluster, onSelectCluste
                     const nCourse = c.total_students_course
                     const nGlobal = c.total_students
                     const sigmaClicks = c.clicks_std_mean
-
+                    const meta = getClusterMeta(c.cluster)
+                    const toneColor = TONE_COLORS[meta.tone ?? "default"] ?? TONE_COLORS.default
                     const smallSample = typeof nCourse === "number" && nCourse > 0 && nCourse < 30
 
                     return (
-                        <Card
-                            variant="outlined"
-                            onClick={() => onSelectCluster(isSelected ? null : c.cluster)}
-                            sx={{
-                                cursor: "pointer",
-                                borderWidth: isSelected ? 2 : 1,
-                                borderColor: isSelected ? "primary.main" : "rgba(15, 23, 42, 0.12)",
-                                boxShadow: isSelected ? 2 : 0,
-                                transition: "all 0.15s",
-                            }}
-                        >
-                                <CardContent sx={{ p: 2.25 }}>
-                                    <Stack spacing={1}>
+                        <Grid item xs={12} sm={6} lg={3} key={c.cluster}>
+                            <Card
+                                elevation={0}
+                                onClick={() => onSelectCluster(isSelected ? null : c.cluster)}
+                                sx={{
+                                    cursor: "pointer",
+                                    border: isSelected ? `2px solid ${toneColor}` : "1px solid rgba(15,23,42,0.10)",
+                                    borderTop: `3px solid ${toneColor}`,
+                                    boxShadow: isSelected ? `0 0 0 3px ${toneColor}22` : "none",
+                                    transition: "all 0.15s",
+                                    height: "100%",
+                                    "&:hover": { boxShadow: `0 2px 12px ${toneColor}30` },
+                                }}
+                            >
+                                <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                                    <Stack spacing={1.25}>
                                         <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                                             <Box>
-                                                <Typography variant="overline" color="text.secondary">
+                                                <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
                                                     C{c.cluster}
                                                 </Typography>
-                                                <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1.15 }}>
+                                                <Typography variant="subtitle2" fontWeight={800} sx={{ lineHeight: 1.2, mt: 0.1 }}>
                                                     {c.label}
                                                 </Typography>
                                             </Box>
-
                                             {typeof nCourse === "number" && (
-                                                <Chip
-                                                    size="small"
-                                                    variant="outlined"
-                                                    label={`n curso: ${nCourse}`}
-                                                    sx={{ mt: 0.3 }}
-                                                />
+                                                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.3, flexShrink: 0 }}>
+                                                    n={nCourse}
+                                                </Typography>
                                             )}
                                         </Stack>
 
                                         <Typography
-                                            variant="body2"
+                                            variant="caption"
                                             color="text.secondary"
                                             sx={{
                                                 display: "-webkit-box",
                                                 WebkitLineClamp: 2,
                                                 WebkitBoxOrient: "vertical",
                                                 overflow: "hidden",
+                                                lineHeight: 1.4,
                                             }}
                                         >
                                             {c.description}
                                         </Typography>
 
-                                        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-                                            <Chip size="small" label={`Clicks/sem: ${fmt(clicks)}`} />
-                                            <Chip size="small" label={`Recursos/sem: ${fmt(resources)}`} />
-                                            <Chip size="small" label={`Diversidad/sem: ${fmt(resourceTypes)}`} />
-                                        </Stack>
+                                        <Divider />
 
-                                        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-                                            <Chip size="small" variant="outlined" label={`Variación semanal: σ ${fmt(c.clicks_std_mean)}`} />
-                                            <Chip size="small" variant="outlined" label={`Resultado dominante: ${topOutcomeLabel}`} />
-                                        </Stack>
-
-                                        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-                                            <Chip size="small" variant="outlined" label={`${outcomeLabel("Pass")}: ${pct(pass)}`} />
-                                            <Chip size="small" variant="outlined" label={`${outcomeLabel("Fail")}: ${pct(fail)}`} />
-                                            <Chip size="small" label={`${outcomeLabel("Withdrawn")}: ${pct(withdrawn)}`} />
-                                        </Stack>
-
-                                        {c.reasons?.length ? (
-                                            <Stack spacing={0.25} sx={{ mt: 0.25 }}>
-                                                {c.reasons.slice(0, 3).map((reason) => (
-                                                    <Typography key={reason} variant="caption" color="text.secondary">
-                                                        {reason}
+                                        {/* Métricas clave en grid compacto */}
+                                        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0.75 }}>
+                                            {[
+                                                { label: "Clicks/sem", value: fmt(clicks) },
+                                                { label: "Recursos/sem", value: fmt(resources) },
+                                                { label: "Diversidad/sem", value: fmt(resourceTypes) },
+                                                { label: "σ clicks", value: fmt(sigmaClicks) },
+                                            ].map(({ label, value }) => (
+                                                <Box key={label}>
+                                                    <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.1 }}>
+                                                        {label}
                                                     </Typography>
+                                                    <Typography variant="body2" fontWeight={700} sx={{ lineHeight: 1.2 }}>
+                                                        {value}
+                                                    </Typography>
+                                                </Box>
+                                            ))}
+                                        </Box>
+
+                                        <Divider />
+
+                                        {/* Resultados */}
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
+                                                Resultado dominante: <strong>{topOutcomeLabel}</strong>
+                                            </Typography>
+                                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                                {[
+                                                    { key: "Pass", value: pass, color: "#1565c0" },
+                                                    { key: "Fail", value: fail, color: "#c62828" },
+                                                    { key: "Withdrawn", value: withdrawn, color: "#7b1fa2" },
+                                                    { key: "Distinction", value: distinction, color: "#2e7d32" },
+                                                ].map(({ key, value, color }) => (
+                                                    <Box
+                                                        key={key}
+                                                        sx={{
+                                                            px: 0.75,
+                                                            py: 0.2,
+                                                            borderRadius: 1,
+                                                            border: `1px solid ${color}40`,
+                                                            bgcolor: `${color}0d`,
+                                                        }}
+                                                    >
+                                                        <Typography variant="caption" sx={{ color, fontWeight: 600, fontSize: 10 }}>
+                                                            {outcomeLabel(key)} {pct(value)}
+                                                        </Typography>
+                                                    </Box>
                                                 ))}
                                             </Stack>
-                                        ) : null}
+                                        </Box>
 
                                         {smallSample && (
-                                            <Chip
-                                                size="small"
-                                                variant="outlined"
-                                                label="Muestra pequeña. Interpreta con cuidado"
-                                                sx={{
-                                                    borderColor: "#f9a825",
-                                                    color: "#f9a825",
-                                                    fontWeight: 700,
-                                                }}
-                                            />
+                                            <Typography variant="caption" sx={{ color: "#b45309" }}>
+                                                ⚠ Muestra pequeña. Interpreta con cuidado.
+                                            </Typography>
                                         )}
 
-                                        <Typography variant="caption" color="text.secondary">
+                                        <Typography variant="caption" color="text.disabled">
                                             {typeof nCourse === "number"
-                                                ? `n global=${nGlobal} · σ clicks=${sigmaClicks.toFixed(1)}`
-                                                : `n=${nGlobal} · σ clicks=${sigmaClicks.toFixed(1)}`}
+                                                ? `n global=${nGlobal}`
+                                                : `n=${nGlobal}`}
                                         </Typography>
                                     </Stack>
                                 </CardContent>
                             </Card>
+                        </Grid>
                     )
                 })}
             </Grid>

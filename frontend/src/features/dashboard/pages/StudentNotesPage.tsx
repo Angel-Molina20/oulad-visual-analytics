@@ -185,43 +185,12 @@ export default function StudentNotesPage() {
         <AppShell>
             <Container maxWidth={false} disableGutters sx={{ width: "100%" }}>
                 <Stack spacing={2.5}>
-                    <Stack
-                        direction={{ xs: "column", sm: "row" }}
-                        justifyContent="space-between"
-                        alignItems={{ xs: "flex-start", sm: "center" }}
-                        spacing={1}
-                    >
-                        <Box>
-                            <Typography variant="h6" fontWeight={700}>
-                                Notas de estudiantes
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                Registro de comentarios docentes por estudiante.
-                            </Typography>
-                        </Box>
-
-                        <Tooltip title={`Exportar ${rows.length} filas a CSV`}>
-                            <span>
-                                <Button
-                                    variant="outlined"
-                                    color="success"
-                                    startIcon={<DownloadRoundedIcon />}
-                                    onClick={handleExport}
-                                    disabled={rows.length === 0}
-                                    size="small"
-                                >
-                                    Exportar CSV
-                                </Button>
-                            </span>
-                        </Tooltip>
-                    </Stack>
-
                     <Box
                         sx={{
                             p: 2,
                             borderRadius: 2.5,
-                            border: "1px solid rgba(15, 23, 42, 0.08)",
-                            bgcolor: "rgba(15, 23, 42, 0.02)",
+                            border: "1px solid rgba(15, 23, 42, 0.07)",
+                            bgcolor: "#fff",
                         }}
                     >
                         <Grid container spacing={2} alignItems="stretch">
@@ -292,6 +261,23 @@ export default function StudentNotesPage() {
                                     <MenuItem value="resolved">Revisados</MenuItem>
                                 </TextField>
                             </Grid>
+
+                            <Grid item xs={12} sx={{ display: "flex", justifyContent: "flex-end", pt: "0 !important" }}>
+                                <Tooltip title={`Exportar ${rows.length} filas a CSV`}>
+                                    <span>
+                                        <Button
+                                            variant="outlined"
+                                            color="success"
+                                            startIcon={<DownloadRoundedIcon />}
+                                            onClick={handleExport}
+                                            disabled={rows.length === 0}
+                                            size="small"
+                                        >
+                                            Exportar CSV
+                                        </Button>
+                                    </span>
+                                </Tooltip>
+                            </Grid>
                         </Grid>
                     </Box>
 
@@ -300,15 +286,15 @@ export default function StudentNotesPage() {
                     <TableContainer sx={{ border: "1px solid rgba(15, 23, 42, 0.06)", borderRadius: 2 }}>
                         <Table size="medium">
                             <TableHead>
-                                <TableRow>
-                                    <TableCell sx={{ fontWeight: 700, width: "12%" }}>Estudiante</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, width: "14%" }}>Curso</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, width: "8%" }}>Semana</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, width: "12%" }}>Estado</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, width: "10%" }}>Riesgo</TableCell>
-                                    <TableCell sx={{ fontWeight: 700 }}>Comentario</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, width: "16%" }}>Actualizado</TableCell>
-                                    <TableCell align="center" sx={{ fontWeight: 700, width: "8%" }}>
+                                <TableRow sx={{ bgcolor: "#f8fafc" }}>
+                                    <TableCell sx={{ fontWeight: 700, width: "12%", borderBottom: "2px solid rgba(15,23,42,0.08)" }}>Estudiante</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, width: "14%", borderBottom: "2px solid rgba(15,23,42,0.08)" }}>Curso</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, width: "8%", borderBottom: "2px solid rgba(15,23,42,0.08)" }}>Semana</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, width: "12%", borderBottom: "2px solid rgba(15,23,42,0.08)" }}>Estado</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, width: "10%", borderBottom: "2px solid rgba(15,23,42,0.08)" }}>Riesgo</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, borderBottom: "2px solid rgba(15,23,42,0.08)" }}>Comentario</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, width: "16%", borderBottom: "2px solid rgba(15,23,42,0.08)" }}>Actualizado</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 700, width: "8%", borderBottom: "2px solid rgba(15,23,42,0.08)" }}>
                                         Acción
                                     </TableCell>
                                 </TableRow>
@@ -413,9 +399,22 @@ export default function StudentNotesPage() {
                     </TableContainer>
 
                     {!notes.loading && rows.length === 0 && !error && (
-                        <Typography variant="body2" color="text.secondary">
-                            No hay comentarios para los filtros seleccionados.
-                        </Typography>
+                        <Box
+                            sx={{
+                                py: 6,
+                                textAlign: "center",
+                                border: "1px dashed rgba(15,23,42,0.12)",
+                                borderRadius: 2,
+                                bgcolor: "rgba(15,23,42,0.01)",
+                            }}
+                        >
+                            <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                                No hay comentarios para los filtros seleccionados.
+                            </Typography>
+                            <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5, display: "block" }}>
+                                Los comentarios se crean desde la tabla de alertas al revisar un caso.
+                            </Typography>
+                        </Box>
                     )}
                 </Stack>
             </Container>

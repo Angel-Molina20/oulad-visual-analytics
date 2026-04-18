@@ -156,8 +156,9 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
 
     const firstClicks = clicks[0] ?? 0
     const lastClicks = clicks[clicks.length - 1] ?? 0
-    const clickChange =
-        firstClicks > 0 ? (((lastClicks - firstClicks) / firstClicks) * 100).toFixed(1) : "0.0"
+    const clickChangeNum =
+        firstClicks > 0 ? ((lastClicks - firstClicks) / firstClicks) * 100 : 0
+    const clickChange = clickChangeNum.toFixed(1)
 
     const paginatedRows = data.trajectory.slice(
         page * rowsPerPage,
@@ -217,6 +218,7 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
 
     return (
         <SectionCard
+            title="Análisis de trayectoria"
             subtitle="Lectura temporal de la actividad semanal del estudiante."
         >
             <Grid container spacing={2}>
@@ -224,7 +226,8 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
                     <InsightCard
                         title="Pico de actividad"
                         value={`Semana ${peakWeek}`}
-                        description={`Maximo de ${peakClicks} clicks registrados.`}
+                        description={`Máximo de ${peakClicks} clicks registrados.`}
+                        color="#3b82f6"
                     />
                 </Grid>
 
@@ -233,22 +236,25 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
                         title="Promedio de clicks"
                         value={`${avgClicks}`}
                         description="Media semanal de interacciones del estudiante."
+                        color="#6366f1"
                     />
                 </Grid>
 
                 <Grid item xs={12} md={3}>
                     <InsightCard
                         title="Cluster dominante"
-                        value={`${dominantClusterMeta.code}, ${dominantClusterMeta.label}`}
+                        value={`${dominantClusterMeta.code} · ${dominantClusterMeta.label}`}
                         description={dominantClusterMeta.description}
+                        color="#14b8a6"
                     />
                 </Grid>
 
                 <Grid item xs={12} md={3}>
                     <InsightCard
                         title="Cambio de actividad"
-                        value={`${clickChange}%`}
-                        description="Variacion entre la primera y la ultima semana registrada."
+                        value={`${clickChangeNum >= 0 ? "+" : ""}${clickChange}%`}
+                        description="Variación entre la primera y la última semana registrada."
+                        color={clickChangeNum >= 0 ? "#22c55e" : "#ef4444"}
                     />
                 </Grid>
 
@@ -257,6 +263,7 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
                         title="Regularidad"
                         value={weeksActiveRatio !== null ? `${Math.round(weeksActiveRatio * 100)}%` : "-"}
                         description="Ratio de semanas activas sobre las semanas transcurridas."
+                        color="#22c55e"
                     />
                 </Grid>
 
@@ -266,9 +273,10 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
                         value={`${submissionsCount}`}
                         description={
                             submissionsCount > 0
-                                ? `Ultima semana activa: ${lastActiveWeek ?? "-"}`
+                                ? `Última semana activa: ${lastActiveWeek ?? "-"}`
                                 : "Sin entregas registradas."
                         }
+                        color="#f59e0b"
                     />
                 </Grid>
 
@@ -276,7 +284,8 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
                     <InsightCard
                         title="Tendencia reciente"
                         value={`${recentTrend >= 0 ? "+" : ""}${Math.round(recentTrend)}`}
-                        description="Suma de cambios en clicks de las ultimas 3 semanas."
+                        description="Suma de cambios en clicks de las últimas 3 semanas."
+                        color={recentTrend >= 0 ? "#22c55e" : "#ef4444"}
                     />
                 </Grid>
             </Grid>
@@ -369,26 +378,28 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
                     margin: { l: 50, r: 20, t: 10, b: 40 },
                     legend: { orientation: "h", y: 1.18 },
                     shapes,
+                    paper_bgcolor: "transparent",
+                    plot_bgcolor: "transparent",
+                    font: { family: "inherit", size: 12 },
                 }}
                 style={{ width: "100%" }}
                 config={{ responsive: true, displayModeBar: false }}
+                useResizeHandler
             />
 
-            <TableContainer>
+            <TableContainer sx={{ border: "1px solid rgba(15,23,42,0.06)", borderRadius: 2 }}>
                 <Table size="small">
                     <TableHead>
-                        <TableRow>
-                            <TableCell align="right">Semana</TableCell>
-                            <TableCell align="right">Clicks</TableCell>
-                            <TableCell align="right">Delta semana</TableCell>
-                            <TableCell align="right">Recursos</TableCell>
-                            <TableCell align="right">Delta diversidad</TableCell>
-                            <TableCell align="right">Tipos</TableCell>
-                            <TableCell align="right">Eventos</TableCell>
-                            <TableCell align="right">Entrega</TableCell>
-                            <TableCell align="right">Cluster</TableCell>
-                            <TableCell align="center">Senal</TableCell>
-                            <TableCell align="center">Cambio</TableCell>
+                        <TableRow sx={{ bgcolor: "#f8fafc" }}>
+                            {["Semana","Clicks","Δ sem.","Recursos","Δ diversidad","Tipos","Eventos","Entrega","Cluster","Señal","Cambio"].map((h, i) => (
+                                <TableCell
+                                    key={h}
+                                    align={i >= 9 ? "center" : "right"}
+                                    sx={{ fontWeight: 700, borderBottom: "2px solid rgba(15,23,42,0.08)", whiteSpace: "nowrap" }}
+                                >
+                                    {h}
+                                </TableCell>
+                            ))}
                         </TableRow>
                     </TableHead>
 

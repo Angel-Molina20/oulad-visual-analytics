@@ -91,120 +91,113 @@ export default function StudentTrajectoryPage() {
                 }}
             >
                 <Stack spacing={3}>
-                    <Stack spacing={2}>
-                        <Breadcrumbs>
-                            <Box
-                                component={RouterLink}
-                                to={returnTo}
-                                sx={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: 0.75,
-                                    textDecoration: "none",
-                                    color: "text.secondary",
-                                }}
-                            >
-                                <HomeRoundedIcon fontSize="small" />
-                                <span>{returnLabel}</span>
-                            </Box>
-
-                            <Box
-                                sx={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: 0.75,
-                                    color: "text.primary",
-                                }}
-                            >
-                                <TimelineRoundedIcon fontSize="small" />
-                                <span>Trayectoria</span>
-                            </Box>
-                        </Breadcrumbs>
-
-                        <Stack
-                            direction={{ xs: "column", sm: "row" }}
-                            spacing={2}
-                            justifyContent="space-between"
-                            alignItems={{ xs: "flex-start", sm: "center" }}
-                        >
-                            <Box>
-                                <Typography variant="h4">Trayectoria del estudiante</Typography>
-                                <Typography variant="body1" color="text.secondary">
-                                    Curso {courseId} · {studentDisplayName}
-                                </Typography>
-                                {summary && (
-                                    <Stack
-                                        direction={{ xs: "column", sm: "row" }}
-                                        spacing={1}
-                                        alignItems={{ xs: "flex-start", sm: "center" }}
-                                        sx={{ mt: 1 }}
-                                    >
-                                        <Typography variant="body2" color="text.secondary">
-                                            Semanas registradas: {summary.totalWeeks}
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary">
-                                            Rango: {summary.firstWeek}–{summary.lastWeek}
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary">
-                                            Última semana: {summary.lastWeek} · Clicks: {summary.lastClicks}
-                                        </Typography>
-                                    </Stack>
-                                )}
-                            </Box>
-
-                            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center">
-                                <TextField
-                                    select
-                                    label="Semana destacada"
-                                    size="small"
-                                    value={selectedWeek === null ? "all" : String(selectedWeek)}
-                                    onChange={(e) => {
-                                        const sp = new URLSearchParams(location.search)
-                                        if (e.target.value === "all") {
-                                            sp.delete("week")
-                                        } else {
-                                            sp.set("week", e.target.value)
-                                        }
-                                        const nextSearch = sp.toString()
-                                        navigate(
-                                            {
-                                                pathname: location.pathname,
-                                                search: nextSearch ? `?${nextSearch}` : "",
-                                            },
-                                            { replace: true }
-                                        )
-                                    }}
-                                    sx={{ minWidth: 180 }}
-                                >
-                                    <MenuItem value="all">Todas</MenuItem>
-                                    {weekOptions.map((week) => (
-                                        <MenuItem key={week} value={String(week)}>
-                                            Semana {week}
-                                        </MenuItem>
-                                    ))}
-                                </TextField>
-
-                                <Button
-                                    variant="outlined"
-                                    color="error"
-                                    startIcon={<PictureAsPdfRoundedIcon />}
-                                    onClick={() => window.print()}
-                                    disabled={!traj.data}
-                                    className="no-print"
-                                >
-                                    Exportar PDF
-                                </Button>
-
-                                <Button
+                    {/* Header compacto */}
+                    <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={1.5}
+                        justifyContent="space-between"
+                        alignItems={{ xs: "flex-start", sm: "center" }}
+                    >
+                        <Stack spacing={0.5}>
+                            <Breadcrumbs sx={{ fontSize: 13 }}>
+                                <Box
                                     component={RouterLink}
                                     to={returnTo}
-                                    variant="outlined"
-                                    startIcon={<ArrowBackRoundedIcon />}
-                                    className="no-print"
+                                    sx={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: 0.5,
+                                        textDecoration: "none",
+                                        color: "text.secondary",
+                                        fontSize: 13,
+                                    }}
                                 >
-                                    Volver a {returnLabel}
-                                </Button>
+                                    <HomeRoundedIcon sx={{ fontSize: 14 }} />
+                                    {returnLabel}
+                                </Box>
+                                <Box
+                                    sx={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: 0.5,
+                                        color: "text.primary",
+                                        fontSize: 13,
+                                    }}
+                                >
+                                    <TimelineRoundedIcon sx={{ fontSize: 14 }} />
+                                    Trayectoria
+                                </Box>
+                            </Breadcrumbs>
+
+                            <Stack direction="row" alignItems="center" spacing={1.5} flexWrap="wrap" useFlexGap>
+                                <Typography variant="h6" fontWeight={700}>
+                                    {studentDisplayName}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    Curso {courseId}
+                                </Typography>
+                                {summary && (
+                                    <>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Sem. {summary.firstWeek}–{summary.lastWeek}
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            {summary.totalWeeks} semanas · {summary.lastClicks} clicks última sem.
+                                        </Typography>
+                                    </>
+                                )}
                             </Stack>
+                        </Stack>
+
+                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap className="no-print">
+                            <TextField
+                                select
+                                label="Semana destacada"
+                                size="small"
+                                value={selectedWeek === null ? "all" : String(selectedWeek)}
+                                onChange={(e) => {
+                                    const sp = new URLSearchParams(location.search)
+                                    if (e.target.value === "all") {
+                                        sp.delete("week")
+                                    } else {
+                                        sp.set("week", e.target.value)
+                                    }
+                                    const nextSearch = sp.toString()
+                                    navigate(
+                                        { pathname: location.pathname, search: nextSearch ? `?${nextSearch}` : "" },
+                                        { replace: true }
+                                    )
+                                }}
+                                sx={{ minWidth: 160 }}
+                            >
+                                <MenuItem value="all">Todas</MenuItem>
+                                {weekOptions.map((week) => (
+                                    <MenuItem key={week} value={String(week)}>
+                                        Semana {week}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
+
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                color="error"
+                                startIcon={<PictureAsPdfRoundedIcon />}
+                                onClick={() => window.print()}
+                                disabled={!traj.data}
+                            >
+                                PDF
+                            </Button>
+
+                            <Button
+                                component={RouterLink}
+                                to={returnTo}
+                                variant="outlined"
+                                size="small"
+                                startIcon={<ArrowBackRoundedIcon />}
+                            >
+                                Volver
+                            </Button>
                         </Stack>
                     </Stack>
 

@@ -144,36 +144,18 @@ export default function StudentComparatorPage() {
         <AppShell>
             <Container maxWidth={false} disableGutters sx={{ width: "100%" }}>
                 <Stack spacing={2.5}>
-                    {/* Header */}
-                    <Stack
-                        direction={{ xs: "column", sm: "row" }}
-                        justifyContent="space-between"
-                        alignItems={{ xs: "flex-start", sm: "center" }}
-                        spacing={1}
-                    >
-                        <Box>
-                            <Typography variant="h6" fontWeight={700}>
-                                Comparador de estudiantes
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                Selecciona hasta {MAX_STUDENTS} estudiantes para comparar su actividad semana a semana.
-                            </Typography>
-                        </Box>
-                        {anyLoading && <CircularProgress size={22} />}
-                    </Stack>
-
                     {/* Filtros */}
                     <Box
                         sx={{
-                            p: 2.5,
+                            p: 2,
                             borderRadius: 2.5,
-                            border: "1px solid rgba(15,23,42,0.08)",
-                            bgcolor: "rgba(15,23,42,0.02)",
+                            border: "1px solid rgba(15,23,42,0.07)",
+                            bgcolor: "#fff",
                         }}
                     >
-                        <Grid container spacing={2.5} alignItems="flex-start">
+                        <Grid container spacing={2} alignItems="flex-start">
                             {/* Selector de curso */}
-                            <Grid item xs={12}>
+                            <Grid item xs={12} sm={4}>
                                 <Autocomplete
                                     options={courseOptions}
                                     value={selectedCourse}
@@ -207,7 +189,7 @@ export default function StudentComparatorPage() {
                             </Grid>
 
                             {/* Selector multi-estudiante */}
-                            <Grid item xs={12}>
+                            <Grid item xs={12} sm={8}>
                                 <Autocomplete
                                     multiple
                                     options={studentOptions}

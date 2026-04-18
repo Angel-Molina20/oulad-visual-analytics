@@ -159,31 +159,16 @@ export default function RiskConfigPage() {
         <AppShell>
             <Container maxWidth="md" disableGutters sx={{ width: "100%" }}>
                 <Stack spacing={3}>
-                    {/* Header */}
-                    <Stack
-                        direction={{ xs: "column", sm: "row" }}
-                        justifyContent="space-between"
-                        alignItems={{ xs: "flex-start", sm: "center" }}
-                        spacing={1}
-                    >
-                        <Box>
-                            <Typography variant="h6" fontWeight={700}>
-                                Configuración del modelo de riesgo
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                Ajusta los pesos de cada indicador para personalizar el score de riesgo.
-                            </Typography>
-                        </Box>
-
-                        {active && (
+                    {active && (
+                        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
                             <Chip
                                 label={`Config activa: ${active.name}`}
                                 variant="outlined"
                                 color="primary"
                                 size="small"
                             />
-                        )}
-                    </Stack>
+                        </Box>
+                    )}
 
                     {error && <Alert severity="error">{error}</Alert>}
                     {saved && (
@@ -321,7 +306,10 @@ export default function RiskConfigPage() {
                     </SectionCard>
 
                     {/* Guardar */}
-                    <SectionCard title="Guardar configuración">
+                    <SectionCard
+                        title="Guardar configuración"
+                        subtitle="Aplica los cambios al modelo de riesgo activo"
+                    >
                         <Grid container spacing={2} alignItems="flex-end">
                             <Grid item xs={12} sm={7}>
                                 <TextField

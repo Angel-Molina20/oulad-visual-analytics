@@ -60,7 +60,7 @@ export default function DashboardPage() {
                         onWeekMaxChange={setWeekMax}
                     />
 
-                    <SummaryRow summary={rangeSummary.data} />
+                    <SummaryRow summary={rangeSummary.data} loading={rangeSummary.loading} />
 
                     {error && <Alert severity="error">{error}</Alert>}
 
@@ -68,6 +68,7 @@ export default function DashboardPage() {
                         data={alerts.data}
                         courseId={courseId}
                         selectedCluster={null}
+                        loading={alerts.loading}
                     />
                 </Stack>
             </Container>

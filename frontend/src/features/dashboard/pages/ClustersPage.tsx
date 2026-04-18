@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react"
 import { ENV } from "../../../config/env"
-import { Alert, Chip, Container, Stack, Typography } from "@mui/material"
+import { Alert, Chip, Container, Grid, Stack, Typography } from "@mui/material"
 import AppShell from "../components/layout/AppShell"
+import { ClusterCardsSkeleton, ChartSkeleton } from "../components/ui/Skeletons"
+import SectionCard from "../components/ui/SectionCard"
 import ClusterCards from "../components/ClusterCards"
 import CohortsPanel from "../components/CohortsPanel"
 import ProfilesPanel from "../components/ProfilesPanel"
@@ -64,8 +66,6 @@ export default function ClustersPage() {
         <AppShell>
             <Container maxWidth={false} disableGutters sx={{ width: "100%" }}>
                 <Stack spacing={2.5}>
-                    <Typography variant="h6">Analisis de clusters</Typography>
-
                     {selectedCluster !== null && (
                         <Chip
                             color={"primary"}
@@ -91,25 +91,41 @@ export default function ClustersPage() {
 
                     {error && <Alert severity="error">{error}</Alert>}
 
-                    <ClusterCards
-                        clusters={labels.data}
-                        selectedCluster={selectedCluster}
-                        onSelectCluster={setSelectedCluster}
-                    />
-                    <CohortsPanel
-                        data={cohorts.data}
-                        metric={cohortMetric}
-                        onMetric={setCohortMetric}
-                        weekMin={weekMin}
-                        weekMax={weekMax}
-                        onApplyRange={handleApplyRange}
-                        selectedCluster={selectedCluster}
-                    />
-                    <ProfilesPanel
-                        data={profiles.data}
-                        clusterOutcomes={clusterOut.data}
-                        selectedCluster={selectedCluster}
-                    />
+                    {labels.loading && !labels.data?.length
+                        ? <ClusterCardsSkeleton />
+                        : <ClusterCards
+                            clusters={labels.data}
+                            selectedCluster={selectedCluster}
+                            onSelectCluster={setSelectedCluster}
+                          />
+                    }
+
+                    <Grid container spacing={2.5} alignItems="flex-start">
+                        <Grid item xs={12} lg={6}>
+                            {cohorts.loading && !cohorts.data
+                                ? <SectionCard title="Cohortes por semana" subtitle="Cargando…"><ChartSkeleton height={260} /></SectionCard>
+                                : <CohortsPanel
+                                    data={cohorts.data}
+                                    metric={cohortMetric}
+                                    onMetric={setCohortMetric}
+                                    weekMin={weekMin}
+                                    weekMax={weekMax}
+                                    onApplyRange={handleApplyRange}
+                                    selectedCluster={selectedCluster}
+                                  />
+                            }
+                        </Grid>
+                        <Grid item xs={12} lg={6}>
+                            {profiles.loading && !profiles.data
+                                ? <SectionCard title="Perfiles" subtitle="Cargando…"><ChartSkeleton height={300} /></SectionCard>
+                                : <ProfilesPanel
+                                    data={profiles.data}
+                                    clusterOutcomes={clusterOut.data}
+                                    selectedCluster={selectedCluster}
+                                  />
+                            }
+                        </Grid>
+                    </Grid>
                 </Stack>
             </Container>
         </AppShell>

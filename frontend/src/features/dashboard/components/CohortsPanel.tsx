@@ -1,7 +1,5 @@
 import Plot from "react-plotly.js"
 import {
-    Card,
-    CardContent,
     Typography,
     Stack,
     TextField,
@@ -11,6 +9,7 @@ import {
 import { useEffect, useMemo, useState } from "react"
 import type { CohortsResponse } from "../../../types/api"
 import { getClusterMeta } from "../utils/clusterMeta"
+import SectionCard from "./ui/SectionCard"
 
 type Props = {
     data: CohortsResponse | null
@@ -110,82 +109,75 @@ export default function CohortsPanel({ data, metric, onMetric, weekMin, weekMax,
 
     const plotData = isWeekMode ? barTrace : traces
 
+    const controls = (
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+            <TextField
+                select
+                size="small"
+                label="Métrica"
+                value={metric}
+                onChange={(e) => onMetric(e.target.value)}
+                sx={{ minWidth: 140 }}
+            >
+                {METRICS.map((m) => (
+                    <MenuItem key={m.key} value={m.key}>
+                        {m.label}
+                    </MenuItem>
+                ))}
+            </TextField>
+
+            <TextField
+                size="small"
+                label="Sem. min"
+                type="number"
+                value={draftMin ?? ""}
+                onChange={(e) => setDraftMin(e.target.value === "" ? null : Number(e.target.value))}
+                sx={{ width: 100 }}
+                inputProps={{ min: 0 }}
+            />
+
+            <TextField
+                size="small"
+                label="Sem. max"
+                type="number"
+                value={draftMax ?? ""}
+                onChange={(e) => setDraftMax(e.target.value === "" ? null : Number(e.target.value))}
+                sx={{ width: 100 }}
+                inputProps={{ min: 0 }}
+            />
+
+            <Button
+                variant="contained"
+                size="small"
+                onClick={() => onApplyRange(draftMin, draftMax)}
+                sx={{ whiteSpace: "nowrap" }}
+            >
+                Aplicar
+            </Button>
+        </Stack>
+    )
+
     return (
-        <Card variant="outlined">
-            <CardContent>
-                <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    justifyContent="space-between"
-                    alignItems={{ xs: "flex-start", sm: "center" }}
-                    spacing={2}
-                    sx={{ mb: 1 }}
-                >
-                    <div>
-                        <Typography variant="h6" fontWeight={700}>
-                            Cohortes por semana
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            {subtitle}
-                        </Typography>
-                    </div>
-
-                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                        <TextField
-                            select
-                            size="small"
-                            label="Métrica"
-                            value={metric}
-                            onChange={(e) => onMetric(e.target.value)}
-                            sx={{ minWidth: 160 }}
-                        >
-                            {METRICS.map((m) => (
-                                <MenuItem key={m.key} value={m.key}>
-                                    {m.label}
-                                </MenuItem>
-                            ))}
-                        </TextField>
-
-                        <TextField
-                            size="small"
-                            label="Semana min"
-                            type="number"
-                            value={draftMin ?? ""}
-                            onChange={(e) => setDraftMin(e.target.value === "" ? null : Number(e.target.value))}
-                            sx={{ width: 130 }}
-                            inputProps={{ min: 0 }}
-                        />
-
-                        <TextField
-                            size="small"
-                            label="Semana max"
-                            type="number"
-                            value={draftMax ?? ""}
-                            onChange={(e) => setDraftMax(e.target.value === "" ? null : Number(e.target.value))}
-                            sx={{ width: 130 }}
-                            inputProps={{ min: 0 }}
-                        />
-
-                        <Button
-                            variant="contained"
-                            onClick={() => onApplyRange(draftMin, draftMax)}
-                        >
-                            Aplicar
-                        </Button>
-                    </Stack>
-                </Stack>
-
-                <Plot
-                    data={plotData}
-                    layout={{
-                        height: 320,
-                        margin: { l: 50, r: 10, t: 10, b: 40 },
-                        legend: isWeekMode ? undefined : { orientation: "h", y: -0.25 },
-                        barmode: isWeekMode ? "group" : undefined,
-                    }}
-                    style={{ width: "100%" }}
-                    config={{ responsive: true, displayModeBar: false }}
-                />
-            </CardContent>
-        </Card>
+        <SectionCard
+            title="Cohortes por semana"
+            subtitle={subtitle}
+            action={controls}
+        >
+            <Plot
+                data={plotData}
+                layout={{
+                    height: 260,
+                    margin: { l: 50, r: 10, t: 10, b: 40 },
+                    legend: isWeekMode ? undefined : { orientation: "h", y: -0.25 },
+                    barmode: isWeekMode ? "group" : undefined,
+                    paper_bgcolor: "transparent",
+                    plot_bgcolor: "transparent",
+                    font: { family: "inherit", size: 12 },
+                }}
+                style={{ width: "100%" }}
+                config={{ responsive: true, displayModeBar: false }}
+                useResizeHandler
+            />
+        </SectionCard>
     )
 }
