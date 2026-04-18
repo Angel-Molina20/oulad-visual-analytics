@@ -378,26 +378,28 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
                     margin: { l: 50, r: 20, t: 10, b: 40 },
                     legend: { orientation: "h", y: 1.18 },
                     shapes,
+                    paper_bgcolor: "transparent",
+                    plot_bgcolor: "transparent",
+                    font: { family: "inherit", size: 12 },
                 }}
                 style={{ width: "100%" }}
                 config={{ responsive: true, displayModeBar: false }}
+                useResizeHandler
             />
 
-            <TableContainer>
+            <TableContainer sx={{ border: "1px solid rgba(15,23,42,0.06)", borderRadius: 2 }}>
                 <Table size="small">
                     <TableHead>
-                        <TableRow>
-                            <TableCell align="right">Semana</TableCell>
-                            <TableCell align="right">Clicks</TableCell>
-                            <TableCell align="right">Delta semana</TableCell>
-                            <TableCell align="right">Recursos</TableCell>
-                            <TableCell align="right">Delta diversidad</TableCell>
-                            <TableCell align="right">Tipos</TableCell>
-                            <TableCell align="right">Eventos</TableCell>
-                            <TableCell align="right">Entrega</TableCell>
-                            <TableCell align="right">Cluster</TableCell>
-                            <TableCell align="center">Senal</TableCell>
-                            <TableCell align="center">Cambio</TableCell>
+                        <TableRow sx={{ bgcolor: "#f8fafc" }}>
+                            {["Semana","Clicks","Δ sem.","Recursos","Δ diversidad","Tipos","Eventos","Entrega","Cluster","Señal","Cambio"].map((h, i) => (
+                                <TableCell
+                                    key={h}
+                                    align={i >= 9 ? "center" : "right"}
+                                    sx={{ fontWeight: 700, borderBottom: "2px solid rgba(15,23,42,0.08)", whiteSpace: "nowrap" }}
+                                >
+                                    {h}
+                                </TableCell>
+                            ))}
                         </TableRow>
                     </TableHead>
 

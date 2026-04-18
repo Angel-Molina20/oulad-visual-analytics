@@ -19,6 +19,7 @@ import Plot from "react-plotly.js"
 import AppShell from "../components/layout/AppShell"
 import MetricCard from "../components/ui/MetricCard"
 import SectionCard from "../components/ui/SectionCard"
+import { SummaryRowSkeleton, ChartSkeleton } from "../components/ui/Skeletons"
 import { useOverview } from "../hooks/useOverview"
 import { useDashboardFilters } from "../context/DashboardFiltersContext"
 import { getClusterMeta } from "../utils/clusterMeta"
@@ -166,7 +167,7 @@ export default function OverviewPage() {
                     {anyError && <Alert severity="error">{anyError}</Alert>}
 
                     {/* KPI cards */}
-                    <Grid container spacing={2} alignItems="stretch">
+                    {loading ? <SummaryRowSkeleton /> : <Grid container spacing={2} alignItems="stretch">
                         <Grid item xs={12} sm={6} md={3} sx={{ display: "flex" }}>
                             <MetricCard
                                 label="Total estudiantes"
@@ -203,7 +204,7 @@ export default function OverviewPage() {
                                 icon={<WarningAmberRoundedIcon sx={{ fontSize: 18 }} />}
                             />
                         </Grid>
-                    </Grid>
+                    </Grid>}
 
                     {/* Actividad semanal */}
                     <SectionCard
@@ -211,7 +212,9 @@ export default function OverviewPage() {
                         subtitle="Clicks totales y estudiantes activos por semana en el curso"
                     >
                         <Box sx={{ height: 260, minHeight: 200 }}>
-                            {weeklyTraces.length > 0 ? (
+                            {loading ? (
+                                <ChartSkeleton height={260} />
+                            ) : weeklyTraces.length > 0 ? (
                                 <Plot
                                     data={weeklyTraces}
                                     layout={{
@@ -236,9 +239,7 @@ export default function OverviewPage() {
                                 />
                             ) : (
                                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-                                    <Typography variant="body2" color="text.secondary">
-                                        Sin datos
-                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">Sin datos</Typography>
                                 </Box>
                             )}
                         </Box>
@@ -253,7 +254,7 @@ export default function OverviewPage() {
                                 subtitle="Por número de estudiantes únicos"
                             >
                                 <Box sx={{ height: 220, overflow: "hidden" }}>
-                                    {resultTrace ? (
+                                    {loading ? <ChartSkeleton height={220} /> : resultTrace ? (
                                         <Plot
                                             data={[resultTrace]}
                                             layout={{
@@ -303,7 +304,7 @@ export default function OverviewPage() {
                                 subtitle="Número de estudiantes por perfil de aprendizaje"
                             >
                                 <Box sx={{ height: 220, overflow: "hidden" }}>
-                                    {clusterTrace ? (
+                                    {loading ? <ChartSkeleton height={220} /> : clusterTrace ? (
                                         <Plot
                                             data={[clusterTrace]}
                                             layout={{

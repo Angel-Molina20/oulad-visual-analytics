@@ -5,6 +5,7 @@ import LibraryBooksRoundedIcon from "@mui/icons-material/LibraryBooksRounded"
 import TrendingUpRoundedIcon from "@mui/icons-material/TrendingUpRounded"
 import TrendingDownRoundedIcon from "@mui/icons-material/TrendingDownRounded"
 import MetricCard from "../components/ui/MetricCard"
+import { SummaryRowSkeleton } from "../components/ui/Skeletons"
 import { getClusterMeta } from "../utils/clusterMeta"
 import type { AlertRow } from "../../../types/api"
 
@@ -34,9 +35,10 @@ type RangeSummary = {
     } | null
 }
 
-type Props = { summary: RangeSummary | null }
+type Props = { summary: RangeSummary | null; loading?: boolean }
 
-export default function SummaryRow({ summary }: Props) {
+export default function SummaryRow({ summary, loading }: Props) {
+    if (loading && !summary) return <SummaryRowSkeleton />
     const hasSummary = Boolean(summary)
     const rangeMin = summary?.rangeMin ?? 0
     const rangeMax = summary?.rangeMax ?? 0

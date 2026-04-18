@@ -32,6 +32,7 @@ import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded"
 import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded"
 import AddCommentRoundedIcon from "@mui/icons-material/AddCommentRounded"
 import SectionCard from "../components/ui/SectionCard"
+import { TableSkeleton } from "../components/ui/Skeletons"
 import InsightCard from "../components/ui/InsightCard"
 import AnalysisDialog from "../components/ui/AnalysisDialog"
 import { getAlertsRecommendations } from "../utils/recommendations"
@@ -52,9 +53,10 @@ type Props = {
     data: AlertsResponse | null
     courseId: string
     selectedCluster: number | null
+    loading?: boolean
 }
 
-export default function AlertsPanel({ data, courseId, selectedCluster }: Props) {
+export default function AlertsPanel({ data, courseId, selectedCluster, loading }: Props) {
     const navigate = useNavigate()
     const location = useLocation()
 
@@ -345,7 +347,13 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
             .join(" · ")
     }
 
-    if (!data) return null
+    if (!data) {
+        return loading ? (
+            <SectionCard title="Alertas semanales" subtitle="Cargando datos…">
+                <TableSkeleton rows={6} cols={10} />
+            </SectionCard>
+        ) : null
+    }
 
     return (
         <SectionCard
