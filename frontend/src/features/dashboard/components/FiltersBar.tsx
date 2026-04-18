@@ -50,37 +50,33 @@ export default function FiltersBar(props: Props) {
             elevation={0}
             sx={{
                 p: 2,
-                borderRadius: 3,
-                border: "1px solid rgba(21, 101, 192, 0.08)",
-                background: "#ffffff",
+                borderRadius: 2.5,
+                border: "1px solid rgba(15,23,42,0.07)",
+                background: "#fff",
             }}
         >
-            <Stack spacing={1.5}>
-                <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    alignItems={{ xs: "flex-start", sm: "center" }}
-                    justifyContent="space-between"
-                    spacing={1}
-                >
-                    <Box>
-                        <Typography variant="subtitle1">Contexto de análisis</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            Define el curso y la semana que quieres revisar.
-                        </Typography>
-                    </Box>
-
+            <Stack
+                direction={{ xs: "column", md: "row" }}
+                alignItems={{ md: "center" }}
+                spacing={2}
+            >
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ flexShrink: 0 }}>
+                    <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                        Filtros:
+                    </Typography>
                     <ToggleButtonGroup
                         size="small"
                         exclusive
                         value={weekMode}
                         onChange={(_, value) => value && onWeekModeChange(value)}
+                        sx={{ "& .MuiToggleButton-root": { py: 0.5, px: 1.5, fontSize: 12 } }}
                     >
                         <ToggleButton value="week">Semana</ToggleButton>
                         <ToggleButton value="range">Rango</ToggleButton>
                     </ToggleButtonGroup>
                 </Stack>
 
-                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} sx={{ flex: 1 }}>
                     <TextField
                         select
                         label="Curso"

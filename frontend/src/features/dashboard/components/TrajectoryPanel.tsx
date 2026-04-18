@@ -217,6 +217,7 @@ export default function TrajectoryPanel({ data, courseId, selectedWeek }: { data
 
     return (
         <SectionCard
+            title="Análisis de trayectoria"
             subtitle="Lectura temporal de la actividad semanal del estudiante."
         >
             <Grid container spacing={2}>

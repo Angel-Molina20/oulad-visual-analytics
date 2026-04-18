@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { ENV } from "../../../config/env"
-import { Alert, Chip, Container, Stack, Typography } from "@mui/material"
+import { Alert, Chip, Container, Grid, Stack, Typography } from "@mui/material"
 import AppShell from "../components/layout/AppShell"
 import ClusterCards from "../components/ClusterCards"
 import CohortsPanel from "../components/CohortsPanel"
@@ -64,8 +64,6 @@ export default function ClustersPage() {
         <AppShell>
             <Container maxWidth={false} disableGutters sx={{ width: "100%" }}>
                 <Stack spacing={2.5}>
-                    <Typography variant="h6">Analisis de clusters</Typography>
-
                     {selectedCluster !== null && (
                         <Chip
                             color={"primary"}
@@ -96,20 +94,27 @@ export default function ClustersPage() {
                         selectedCluster={selectedCluster}
                         onSelectCluster={setSelectedCluster}
                     />
-                    <CohortsPanel
-                        data={cohorts.data}
-                        metric={cohortMetric}
-                        onMetric={setCohortMetric}
-                        weekMin={weekMin}
-                        weekMax={weekMax}
-                        onApplyRange={handleApplyRange}
-                        selectedCluster={selectedCluster}
-                    />
-                    <ProfilesPanel
-                        data={profiles.data}
-                        clusterOutcomes={clusterOut.data}
-                        selectedCluster={selectedCluster}
-                    />
+
+                    <Grid container spacing={2.5} alignItems="flex-start">
+                        <Grid item xs={12} lg={6}>
+                            <CohortsPanel
+                                data={cohorts.data}
+                                metric={cohortMetric}
+                                onMetric={setCohortMetric}
+                                weekMin={weekMin}
+                                weekMax={weekMax}
+                                onApplyRange={handleApplyRange}
+                                selectedCluster={selectedCluster}
+                            />
+                        </Grid>
+                        <Grid item xs={12} lg={6}>
+                            <ProfilesPanel
+                                data={profiles.data}
+                                clusterOutcomes={clusterOut.data}
+                                selectedCluster={selectedCluster}
+                            />
+                        </Grid>
+                    </Grid>
                 </Stack>
             </Container>
         </AppShell>

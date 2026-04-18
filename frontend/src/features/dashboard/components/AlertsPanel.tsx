@@ -597,25 +597,25 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                 >
                     <Table size="medium">
                         <TableHead>
-                            <TableRow>
-                                <TableCell sx={{ fontWeight: 700, width: "11%" }}>Estudiante</TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 700, width: "7%" }}>
+                            <TableRow sx={{ bgcolor: "#f8fafc" }}>
+                                <TableCell sx={{ fontWeight: 700, width: "11%", borderBottom: "2px solid rgba(15,23,42,0.08)" }}>Estudiante</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 700, width: "7%", borderBottom: "2px solid rgba(15,23,42,0.08)" }}>
                                     Clicks
                                 </TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 700, width: "7%" }}>
+                                <TableCell align="right" sx={{ fontWeight: 700, width: "7%", borderBottom: "2px solid rgba(15,23,42,0.08)" }}>
                                     Recursos
                                 </TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 700, width: "7%" }}>
+                                <TableCell align="right" sx={{ fontWeight: 700, width: "7%", borderBottom: "2px solid rgba(15,23,42,0.08)" }}>
                                     Eventos
                                 </TableCell>
-                                <TableCell sx={{ fontWeight: 700, width: "12%" }}>Cluster</TableCell>
-                                <TableCell sx={{ fontWeight: 700, width: "9%" }}>Resultado</TableCell>
-                                <TableCell sx={{ fontWeight: 700, width: "11%" }}>Pred. ML</TableCell>
-                                <TableCell sx={{ fontWeight: 700, width: "11%" }}>Riesgo</TableCell>
-                                <TableCell align="center" sx={{ fontWeight: 700, width: "9%" }}>
+                                <TableCell sx={{ fontWeight: 700, width: "12%", borderBottom: "2px solid rgba(15,23,42,0.08)" }}>Cluster</TableCell>
+                                <TableCell sx={{ fontWeight: 700, width: "9%", borderBottom: "2px solid rgba(15,23,42,0.08)" }}>Resultado</TableCell>
+                                <TableCell sx={{ fontWeight: 700, width: "11%", borderBottom: "2px solid rgba(15,23,42,0.08)" }}>Pred. ML</TableCell>
+                                <TableCell sx={{ fontWeight: 700, width: "11%", borderBottom: "2px solid rgba(15,23,42,0.08)" }}>Riesgo</TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 700, width: "9%", borderBottom: "2px solid rgba(15,23,42,0.08)" }}>
                                     Estado
                                 </TableCell>
-                                <TableCell align="center" sx={{ fontWeight: 700, width: "16%" }}>
+                                <TableCell align="center" sx={{ fontWeight: 700, width: "16%", borderBottom: "2px solid rgba(15,23,42,0.08)" }}>
                                     Acción
                                 </TableCell>
                             </TableRow>
@@ -625,8 +625,16 @@ export default function AlertsPanel({ data, courseId, selectedCluster }: Props) 
                             {paginatedRows.map((a) => {
                                 const meta = getClusterMeta(a.cluster)
                                 const status = getStatus(a)
+                                const riskBorderColor = a.risk_score >= 0.75 ? "#ef4444" : a.risk_score >= 0.45 ? "#f59e0b" : "#22c55e"
                                 return (
-                                    <TableRow key={`${a.user_id}-${a.week_id}`} hover>
+                                    <TableRow
+                                        key={`${a.user_id}-${a.week_id}`}
+                                        hover
+                                        sx={{
+                                            borderLeft: `3px solid ${riskBorderColor}`,
+                                            opacity: status === "resolved" ? 0.6 : 1,
+                                        }}
+                                    >
                                         <TableCell>{getStudentName(a.user_id, nameMap)}</TableCell>
                                         <TableCell align="right">{a.clicks_total}</TableCell>
                                         <TableCell align="right">{a.resources_touched}</TableCell>

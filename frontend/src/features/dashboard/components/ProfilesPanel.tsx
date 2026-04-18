@@ -1,7 +1,5 @@
 import Plot from "react-plotly.js"
 import {
-    Card,
-    CardContent,
     Typography,
     Grid,
     Table,
@@ -12,10 +10,12 @@ import {
     Divider,
     Chip,
     Stack,
+    TableContainer,
 } from "@mui/material"
 import type { ProfilesResponse } from "../../../types/api"
 import { getClusterMeta } from "../utils/clusterMeta"
 import { outcomeLabel, OUTCOME_ORDER } from "../utils/outcomes"
+import SectionCard from "./ui/SectionCard"
 
 type ClusterOutcomeRow = {
     cluster: number
@@ -133,61 +133,58 @@ export default function ProfilesPanel({ data, clusterOutcomes, selectedCluster }
         })
     })
 
+    const TH_SX = { fontWeight: 700, bgcolor: "#f8fafc", borderBottom: "2px solid rgba(15,23,42,0.08)" }
+
     return (
         <Grid container spacing={2}>
             {/* Izquierda: distribución */}
-            <Grid item xs={12} md={4}>
-                <Card variant="outlined">
-                    <CardContent>
-                        <Typography variant="h6" fontWeight={700} gutterBottom>
-                            Distribución de clusters
-                        </Typography>
-
-                        <Plot
-                            data={[
-                                {
-                                    type: "bar",
-                                    x: xCodes,
-                                    y: yStudents,
-                                    marker: {
-                                        color: clusterIds.map((c) => (selectedCluster === c ? "rgba(25,118,210,0.9)" : "rgba(25,118,210,0.35)")),
-                                    },
-                                    hovertemplate: "%{x}<br>Estudiantes: %{y}<extra></extra>",
+            <Grid item xs={12}>
+                <SectionCard title="Distribución de clusters" subtitle="Número de estudiantes por perfil">
+                    <Plot
+                        data={[
+                            {
+                                type: "bar",
+                                x: xCodes,
+                                y: yStudents,
+                                marker: {
+                                    color: clusterIds.map((c) => (selectedCluster === c ? "rgba(25,118,210,0.9)" : "rgba(25,118,210,0.35)")),
                                 },
-                            ]}
-                            layout={{
-                                height: 260,
-                                margin: { l: 40, r: 10, t: 10, b: 40 },
-                                yaxis: { title: "Estudiantes" },
-                            }}
-                            style={{ width: "100%" }}
-                        />
+                                hovertemplate: "%{x}<br>Estudiantes: %{y}<extra></extra>",
+                            },
+                        ]}
+                        layout={{
+                            height: 180,
+                            margin: { l: 40, r: 10, t: 10, b: 40 },
+                            yaxis: { title: "Estudiantes" },
+                            paper_bgcolor: "transparent",
+                            plot_bgcolor: "transparent",
+                            font: { family: "inherit", size: 12 },
+                        }}
+                        style={{ width: "100%" }}
+                        config={{ displayModeBar: false, responsive: true }}
+                        useResizeHandler
+                    />
 
+                    <TableContainer sx={{ border: "1px solid rgba(15,23,42,0.06)", borderRadius: 1.5 }}>
                         <Table size="small">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell>Cluster</TableCell>
-                                    <TableCell>Perfil</TableCell>
-                                    <TableCell align="right">Estudiantes</TableCell>
+                                    <TableCell sx={TH_SX}>Cluster</TableCell>
+                                    <TableCell sx={TH_SX}>Perfil</TableCell>
+                                    <TableCell align="right" sx={TH_SX}>Estudiantes</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {data.profiles.map((r) => {
                                     const meta = getClusterMeta(r.cluster)
                                     return (
-                                        <TableRow key={r.cluster}
-                                             sx={{
-                                                backgroundColor: selectedCluster === r.cluster ? "rgba(25,118,210,0.08)" : undefined,
-                                             }}
+                                        <TableRow
+                                            key={r.cluster}
+                                            sx={{ bgcolor: selectedCluster === r.cluster ? "rgba(25,118,210,0.06)" : undefined }}
                                         >
                                             <TableCell>{meta.code}</TableCell>
                                             <TableCell>
-                                                <Chip
-                                                    size="small"
-                                                    label={meta.label}
-                                                    color={chipColor(meta.tone)}
-                                                    variant="outlined"
-                                                />
+                                                <Chip size="small" label={meta.label} color={chipColor(meta.tone)} variant="outlined" />
                                             </TableCell>
                                             <TableCell align="right">{r.students}</TableCell>
                                         </TableRow>
@@ -195,95 +192,87 @@ export default function ProfilesPanel({ data, clusterOutcomes, selectedCluster }
                                 })}
                             </TableBody>
                         </Table>
-                    </CardContent>
-                </Card>
+                    </TableContainer>
+                </SectionCard>
             </Grid>
 
             {/* Derecha: outcomes */}
-            <Grid item xs={12} md={8}>
-                <Card variant="outlined">
-                    <CardContent>
-                        <Stack spacing={0.5} sx={{ mb: 1 }}>
-                            <Typography variant="h6" fontWeight={700}>
-                                Resultados por cluster
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                Treemap por cluster y resultado. El tamaño representa porcentaje.
-                            </Typography>
-                        </Stack>
+            <Grid item xs={12}>
+                <SectionCard
+                    title="Resultados por cluster"
+                    subtitle="Treemap por cluster y resultado. El tamaño representa porcentaje."
+                >
+                    <Plot
+                        data={[
+                            {
+                                type: "treemap",
+                                ids: treemapIds,
+                                labels: treemapLabels,
+                                parents: treemapParents,
+                                values: treemapValues,
+                                text: treemapText,
+                                textinfo: "label+value",
+                                valuesuffix: "%",
+                                hovertemplate: "%{text}<extra></extra>",
+                                branchvalues: "total",
+                                level: treemapLevel,
+                            } as any,
+                        ]}
+                        layout={{
+                            height: 260,
+                            margin: { l: 10, r: 10, t: 10, b: 10 },
+                            paper_bgcolor: "transparent",
+                            font: { family: "inherit", size: 12 },
+                        }}
+                        style={{ width: "100%" }}
+                        config={{ displayModeBar: false, responsive: true }}
+                        useResizeHandler
+                    />
 
-                        <Plot
-                            data={[
-                                {
-                                    type: "treemap",
-                                    ids: treemapIds,
-                                    labels: treemapLabels,
-                                    parents: treemapParents,
-                                    values: treemapValues,
-                                    text: treemapText,
-                                    textinfo: "label+value",
-                                    valuesuffix: "%",
-                                    hovertemplate: "%{text}<extra></extra>",
-                                    branchvalues: "total",
-                                    level: treemapLevel
-                                } as any,
-                            ]}
-                            layout={{
-                                height: 340,
-                                margin: { l: 10, r: 10, t: 10, b: 10 },
-                            }}
-                            style={{ width: "100%" }}
-                        />
+                    <Divider />
 
-                        <Divider sx={{ my: 1.5 }} />
-
-                        <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+                    <Stack spacing={0.5}>
+                        <Typography variant="subtitle2" fontWeight={700}>
                             Tabla resumen
                         </Typography>
-
-                        <Table size="small">
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Cluster</TableCell>
-                                    <TableCell>Perfil</TableCell>
-                                    <TableCell align="right">Total</TableCell>
-                                    <TableCell align="right">Aprobado</TableCell>
-                                    <TableCell align="right">Distincion</TableCell>
-                                    <TableCell align="right">Reprobado</TableCell>
-                                    <TableCell align="right">Retirado</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {rows.map((r) => (
-                                    <TableRow key={r.cluster}
-                                              sx={{
-                                                  backgroundColor: selectedCluster === r.cluster ? "rgba(25,118,210,0.08)" : undefined,
-                                              }}
-                                    >
-                                        <TableCell>{r.code}</TableCell>
-                                        <TableCell>
-                                            <Chip
-                                                size="small"
-                                                label={r.label}
-                                                color={chipColor(r.tone)}
-                                                variant="outlined"
-                                            />
-                                        </TableCell>
-                                        <TableCell align="right">{r.total || "-"}</TableCell>
-                                        <TableCell align="right">{pct(r.pass)}</TableCell>
-                                        <TableCell align="right">{pct(r.dist)}</TableCell>
-                                        <TableCell align="right">{pct(r.fail)}</TableCell>
-                                        <TableCell align="right">{pct(r.withd)}</TableCell>
+                        <TableContainer sx={{ border: "1px solid rgba(15,23,42,0.06)", borderRadius: 1.5 }}>
+                            <Table size="small">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell sx={TH_SX}>Cluster</TableCell>
+                                        <TableCell sx={TH_SX}>Perfil</TableCell>
+                                        <TableCell align="right" sx={TH_SX}>Total</TableCell>
+                                        <TableCell align="right" sx={TH_SX}>Aprobado</TableCell>
+                                        <TableCell align="right" sx={TH_SX}>Distinción</TableCell>
+                                        <TableCell align="right" sx={TH_SX}>Reprobado</TableCell>
+                                        <TableCell align="right" sx={TH_SX}>Retirado</TableCell>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-
+                                </TableHead>
+                                <TableBody>
+                                    {rows.map((r) => (
+                                        <TableRow
+                                            key={r.cluster}
+                                            sx={{ bgcolor: selectedCluster === r.cluster ? "rgba(25,118,210,0.06)" : undefined }}
+                                        >
+                                            <TableCell>{r.code}</TableCell>
+                                            <TableCell>
+                                                <Chip size="small" label={r.label} color={chipColor(r.tone)} variant="outlined" />
+                                            </TableCell>
+                                            <TableCell align="right">{r.total || "-"}</TableCell>
+                                            <TableCell align="right">{pct(r.pass)}</TableCell>
+                                            <TableCell align="right">{pct(r.dist)}</TableCell>
+                                            <TableCell align="right">{pct(r.fail)}</TableCell>
+                                            <TableCell align="right">{pct(r.withd)}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
                         <Typography variant="caption" color="text.secondary">
                             Porcentajes calculados por estudiante-curso, no por semana.
                         </Typography>
-                    </CardContent>
-                </Card>
+                    </Stack>
+                </SectionCard>
             </Grid>
         </Grid>
     )

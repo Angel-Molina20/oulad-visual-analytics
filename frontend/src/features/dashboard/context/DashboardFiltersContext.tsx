@@ -63,7 +63,7 @@ export function DashboardFiltersProvider({ children }: { children: React.ReactNo
             return prev
         })
         setWeekMaxState((prev) => {
-            if (prev === null || prev > maxWeekAvailable || prev < minWeekAvailable) return maxWeekAvailable
+            if (prev === null || prev > maxWeekAvailable || prev < minWeekAvailable) return minWeekAvailable
             return prev
         })
     }, [minWeekAvailable, maxWeekAvailable])

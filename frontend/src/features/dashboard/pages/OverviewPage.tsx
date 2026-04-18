@@ -11,8 +11,13 @@ import {
     TextField,
     Typography,
 } from "@mui/material"
+import SchoolRoundedIcon from "@mui/icons-material/SchoolRounded"
+import DateRangeRoundedIcon from "@mui/icons-material/DateRangeRounded"
+import MouseRoundedIcon from "@mui/icons-material/MouseRounded"
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded"
 import Plot from "react-plotly.js"
 import AppShell from "../components/layout/AppShell"
+import MetricCard from "../components/ui/MetricCard"
 import SectionCard from "../components/ui/SectionCard"
 import { useOverview } from "../hooks/useOverview"
 import { useDashboardFilters } from "../context/DashboardFiltersContext"
@@ -114,123 +119,81 @@ export default function OverviewPage() {
 
     const anyError = coursesError || error
 
+    const atRiskColor = atRiskPct >= 40 ? "#ef4444" : atRiskPct >= 20 ? "#f59e0b" : "#22c55e"
+
     return (
         <AppShell>
             <Container maxWidth={false} disableGutters sx={{ width: "100%" }}>
                 <Stack spacing={2.5}>
-                    {/* Header */}
-                    <Stack
-                        direction={{ xs: "column", sm: "row" }}
-                        justifyContent="space-between"
-                        alignItems={{ xs: "flex-start", sm: "center" }}
-                        spacing={1}
-                    >
-                        <Box>
-                            <Typography variant="h6" fontWeight={700}>
-                                Vista general del curso
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                KPIs globales, distribución de estudiantes y actividad semanal.
-                            </Typography>
-                        </Box>
-
-                        {loading && <CircularProgress size={22} />}
-                    </Stack>
 
                     {/* Selector de curso */}
-                    <Autocomplete
-                        options={courseOptions}
-                        value={selectedCourse}
-                        isOptionEqualToValue={(o, v) => o.value === v.value}
-                        getOptionLabel={(o) => o.label}
-                        onChange={(_, v) => v && setCourseId(v.value)}
-                        renderInput={(params) => (
-                            <TextField
-                                {...params}
-                                label="Curso"
-                                sx={{
-                                    bgcolor: "#fff",
-                                    borderRadius: 2,
-                                    maxWidth: 480,
-                                    "& .MuiInputBase-root": { height: 56 },
-                                }}
-                                fullWidth
-                            />
-                        )}
-                        disableClearable
-                        noOptionsText="Sin cursos"
-                        sx={{ maxWidth: 480 }}
-                    />
+                    <Stack direction="row" alignItems="center" spacing={2}>
+                        <Autocomplete
+                            options={courseOptions}
+                            value={selectedCourse}
+                            isOptionEqualToValue={(o, v) => o.value === v.value}
+                            getOptionLabel={(o) => o.label}
+                            onChange={(_, v) => v && setCourseId(v.value)}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label="Curso"
+                                    sx={{
+                                        bgcolor: "#fff",
+                                        borderRadius: 2,
+                                        "& .MuiInputBase-root": { height: 48 },
+                                        "& .MuiInputLabel-root": { fontSize: 14 },
+                                    }}
+                                    fullWidth
+                                />
+                            )}
+                            disableClearable
+                            noOptionsText="Sin cursos"
+                            sx={{ width: 340 }}
+                        />
+                        {loading && <CircularProgress size={20} />}
+                    </Stack>
 
                     {anyError && <Alert severity="error">{anyError}</Alert>}
 
                     {/* KPI cards */}
                     <Grid container spacing={2} alignItems="stretch">
-                        {[
-                            {
-                                label: "Estudiantes",
-                                value: kpis ? kpis.total_students.toLocaleString("es-ES") : "—",
-                                helper: kpis ? `Semanas ${kpis.week_min}–${kpis.week_max}` : "—",
-                                color: "#3b82f6",
-                            },
-                            {
-                                label: "Semanas activas",
-                                value: kpis ? String(kpis.total_weeks) : "—",
-                                helper: kpis
-                                    ? `Más activa: semana ${kpis.most_active_week ?? "—"} (${kpis.most_active_week_clicks.toLocaleString("es-ES")} clicks)`
-                                    : "—",
-                                color: "#6366f1",
-                            },
-                            {
-                                label: "Clicks / est. / semana",
-                                value: kpis
-                                    ? new Intl.NumberFormat("es-ES", { maximumFractionDigits: 1 }).format(
-                                          kpis.avg_clicks_per_student_week
-                                      )
-                                    : "—",
-                                helper: "Promedio del curso",
-                                color: "#14b8a6",
-                            },
-                            {
-                                label: "Abandonan o suspenden",
-                                value: kpis ? `${atRiskPct}%` : "—",
-                                helper: kpis
-                                    ? `${kpis.at_risk_count} de ${kpis.total_students} estudiantes`
-                                    : "—",
-                                color: atRiskPct >= 40 ? "#ef4444" : atRiskPct >= 20 ? "#f59e0b" : "#22c55e",
-                            },
-                        ].map((card) => (
-                            <Grid item xs={12} sm={6} md={3} key={card.label} sx={{ display: "flex" }}>
-                                <Box
-                                    sx={{
-                                        flex: 1,
-                                        p: 2.5,
-                                        borderRadius: 2.5,
-                                        border: "1px solid rgba(15,23,42,0.08)",
-                                        bgcolor: "#fff",
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        gap: 1,
-                                        minHeight: 130,
-                                        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                                    }}
-                                >
-                                    <Typography variant="body2" color="text.secondary" fontWeight={500}>
-                                        {card.label}
-                                    </Typography>
-                                    <Typography
-                                        variant="h4"
-                                        fontWeight={700}
-                                        sx={{ color: card.color, lineHeight: 1.1 }}
-                                    >
-                                        {card.value}
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                        {card.helper}
-                                    </Typography>
-                                </Box>
-                            </Grid>
-                        ))}
+                        <Grid item xs={12} sm={6} md={3} sx={{ display: "flex" }}>
+                            <MetricCard
+                                label="Total estudiantes"
+                                value={kpis ? kpis.total_students.toLocaleString("es-ES") : "—"}
+                                helper={kpis ? `Semanas ${kpis.week_min} – ${kpis.week_max}` : "Sin datos"}
+                                color="#3b82f6"
+                                icon={<SchoolRoundedIcon sx={{ fontSize: 18 }} />}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3} sx={{ display: "flex" }}>
+                            <MetricCard
+                                label="Semanas activas"
+                                value={kpis ? String(kpis.total_weeks) : "—"}
+                                helper={kpis ? `Semana más activa: ${kpis.most_active_week ?? "—"}` : "Sin datos"}
+                                color="#6366f1"
+                                icon={<DateRangeRoundedIcon sx={{ fontSize: 18 }} />}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3} sx={{ display: "flex" }}>
+                            <MetricCard
+                                label="Clicks / est. / semana"
+                                value={kpis ? new Intl.NumberFormat("es-ES", { maximumFractionDigits: 1 }).format(kpis.avg_clicks_per_student_week) : "—"}
+                                helper="Promedio del curso"
+                                color="#14b8a6"
+                                icon={<MouseRoundedIcon sx={{ fontSize: 18 }} />}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3} sx={{ display: "flex" }}>
+                            <MetricCard
+                                label="Abandonan o suspenden"
+                                value={kpis ? `${atRiskPct}%` : "—"}
+                                helper={kpis ? `${kpis.at_risk_count} de ${kpis.total_students} estudiantes` : "Sin datos"}
+                                color={atRiskColor}
+                                icon={<WarningAmberRoundedIcon sx={{ fontSize: 18 }} />}
+                            />
+                        </Grid>
                     </Grid>
 
                     {/* Actividad semanal */}
