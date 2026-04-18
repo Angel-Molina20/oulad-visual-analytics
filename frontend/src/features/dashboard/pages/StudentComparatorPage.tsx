@@ -20,7 +20,6 @@ import SectionCard from "../components/ui/SectionCard"
 import { useDashboardFilters } from "../context/DashboardFiltersContext"
 import { useStudentList } from "../hooks/useStudentList"
 import { useMultiTrajectory } from "../hooks/useMultiTrajectory"
-import { buildStudentNameMap, getStudentName } from "../../../utils/studentNames"
 import { getClusterMeta } from "../utils/clusterMeta"
 
 // ── Paleta de colores por estudiante (hasta 4) ───────────────────────────────
@@ -55,22 +54,21 @@ export default function StudentComparatorPage() {
 
     const { data: studentList, loading: listLoading, error: listError } = useStudentList(courseId)
 
-    // Mapa de nombres "Demo Test N" para todos los estudiantes del curso
-    const nameMap = useMemo(
-        () => buildStudentNameMap(studentList.map((s) => s.user_id)),
-        [studentList]
-    )
+    const nameMap = useMemo(() => {
+        const map = new Map<number, string>()
+        studentList.forEach((s) => map.set(s.user_id, s.display_name ?? "Demo Test ?"))
+        return map
+    }, [studentList])
 
-    // Opciones para el selector multi-estudiante
     const studentOptions = useMemo(
         () =>
             studentList.map((s) => ({
                 userId: s.user_id,
-                label: getStudentName(s.user_id, nameMap),
+                label: s.display_name ?? "Demo Test ?",
                 cluster: s.cluster,
                 finalResult: s.final_result,
             })),
-        [studentList, nameMap]
+        [studentList]
     )
 
     const selectedOptions = useMemo(
@@ -88,7 +86,7 @@ export default function StudentComparatorPage() {
             .map((t, i) => {
                 const rows = t.data!.trajectory
                 const color = STUDENT_COLORS[i % STUDENT_COLORS.length]
-                const name = getStudentName(t.userId, nameMap)
+                const name = nameMap.get(t.userId) ?? "Demo Test ?"
                 return {
                     x: rows.map((r) => r.week_id),
                     y: rows.map((r) => r[metric] as number),
@@ -115,7 +113,7 @@ export default function StudentComparatorPage() {
                 const last = vals[vals.length - 1]
                 return {
                     userId: t.userId,
-                    name: getStudentName(t.userId, nameMap),
+                    name: nameMap.get(t.userId) ?? "Demo Test ?",
                     color: STUDENT_COLORS[i % STUDENT_COLORS.length],
                     total,
                     max,

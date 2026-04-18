@@ -36,12 +36,14 @@ export type TrajectoryRow = {
 export type TrajectoryResponse = {
     course_id: string
     user_id: number
+    display_name?: string
     trajectory: TrajectoryRow[]
     note?: string
 }
 
 export type AlertRow = {
     user_id: number
+    display_name?: string
     week_id: number
     clicks_total: number
     resources_touched: number

@@ -41,7 +41,7 @@ def main():
         "has_submission_week",
     ]
     metric_cols_mean = ["weeks_active_ratio", "clicks_delta_prev_week", "resource_diversity_delta"]
-    keep_cols = ["cluster", "final_result"]
+    keep_cols = ["cluster", "final_result", "display_name"]
 
     # Agregamos métricas, y para cluster/final_result tomamos el primero (deberían ser iguales)
     agg = {c: "sum" for c in metric_cols_sum if c in df.columns}
