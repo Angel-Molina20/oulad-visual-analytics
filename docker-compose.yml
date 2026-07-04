@@ -53,7 +53,7 @@ services:
     volumes:
       - ./data:/data
       - ./worker:/worker
-    command: ["python", "-m", "jobs.00_smoke"]
+    command: ["python", "-m", "run_pipeline"]
 
   web:
     build:

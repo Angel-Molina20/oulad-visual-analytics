@@ -79,4 +79,18 @@ def predict_outcomes(rows: list[dict]) -> list[dict]:
 
 def get_classifier_meta() -> dict:
     _, _, meta = _load_classifier()
+    meta = dict(meta)
+
+    # Job 08 now stores the grouped CV metrics under a richer nested key.
+    # Keep the API contract expected by the dashboard stable.
+    cv_multi = meta.get("cv_grouped_multiclass")
+    if isinstance(cv_multi, dict):
+        meta.setdefault("cv_accuracy", cv_multi.get("accuracy_mean"))
+        meta.setdefault("cv_f1_weighted", cv_multi.get("f1_weighted_mean"))
+        meta.setdefault("cv_accuracy_per_fold", cv_multi.get("accuracy_per_fold"))
+        meta.setdefault("cv_f1_per_fold", cv_multi.get("f1_weighted_per_fold"))
+
+    if "full_data_report" not in meta and "full_data_report_optimistic" in meta:
+        meta["full_data_report"] = meta["full_data_report_optimistic"]
+
     return meta
